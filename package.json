@@ -1,0 +1,14 @@
+{
+  "name": "govprep-root",
+  "version": "1.0.0",
+  "description": "GovPrep - Local-first, dual-mode AI study companion",
+  "private": true,
+  "scripts": {
+    "install:all": "npm install && npm install --prefix Frontend && npm install --prefix Backend",
+    "dev": "concurrently -n frontend,backend -c cyan,green \"npm run dev --prefix Frontend\" \"npm run dev --prefix Backend\"",
+    "build": "npm run build --prefix Frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
