@@ -1,0 +1,54 @@
+{
+  "id": "ssc-cgl-tier1",
+  "name": "SSC Combined Graduate Level — Tier I",
+  "shortName": "SSC CGL — Tier I",
+  "body": "Staff Selection Commission",
+  "family": "ssc-cgl",
+  "category": "SSC",
+  "languages": ["en", "hi"],
+  "pattern": {
+    "papers": [
+      {
+        "id": "tier-1",
+        "name": "Tier-I Computer Based Examination",
+        "qcount": 100,
+        "marksPerQuestion": 2,
+        "negativeMarking": 0.5,
+        "durationMinutes": 60,
+        "subjectIds": [
+          "general-intelligence-reasoning",
+          "general-awareness",
+          "quantitative-aptitude",
+          "english-comprehension"
+        ]
+      }
+    ],
+    "totalQuestions": 100,
+    "totalMarks": 200,
+    "totalDurationMinutes": 60,
+    "negativeMarking": 0.5,
+    "hasSectionalTiming": false,
+    "sectionalCutoffs": null,
+    "qualifyingCriteria": "Overall cutoff per category; Tier-I qualifies candidates for Tier-II."
+  },
+  "subjects": [
+    { "id": "general-intelligence-reasoning", "name": "General Intelligence & Reasoning", "paperId": "tier-1", "weightPct": 25 },
+    { "id": "general-awareness", "name": "General Awareness", "paperId": "tier-1", "weightPct": 25 },
+    { "id": "quantitative-aptitude", "name": "Quantitative Aptitude", "paperId": "tier-1", "weightPct": 25 },
+    { "id": "english-comprehension", "name": "English Comprehension", "paperId": "tier-1", "weightPct": 25 }
+  ],
+  "topics": [
+    { "id": "ssc-reasoning-analogies", "subjectId": "general-intelligence-reasoning", "name": "Analogies, Series & Classification", "order": 1, "syllabusText": "Semantic/number/figural analogies, series, and classification.", "importance": "high" },
+    { "id": "ssc-reasoning-coding", "subjectId": "general-intelligence-reasoning", "name": "Coding-Decoding & Puzzles", "order": 2, "syllabusText": "Coding-decoding, matrix, blood relations, and puzzles.", "importance": "medium" },
+    { "id": "ssc-ga-static-gk", "subjectId": "general-awareness", "name": "Static GK & Current Affairs", "order": 1, "syllabusText": "History, geography, polity, economy, general science, and current affairs.", "importance": "high" },
+    { "id": "ssc-quant-arithmetic", "subjectId": "quantitative-aptitude", "name": "Arithmetic", "order": 1, "syllabusText": "Percentage, ratio, average, interest, profit/loss, time-work, time-distance.", "importance": "high" },
+    { "id": "ssc-quant-advanced", "subjectId": "quantitative-aptitude", "name": "Algebra, Geometry & Trigonometry", "order": 2, "syllabusText": "Algebra, geometry, mensuration, trigonometry, and data interpretation.", "importance": "high" },
+    { "id": "ssc-english-grammar", "subjectId": "english-comprehension", "name": "Grammar, Vocabulary & Comprehension", "order": 1, "syllabusText": "Error spotting, fill-ups, synonyms/antonyms, idioms, and reading comprehension.", "importance": "high" }
+  ],
+  "meta": {
+    "verification": "unverified",
+    "sources": ["https://ssc.gov.in/"],
+    "lastReviewed": null,
+    "notes": "STUB included to prove the engine is config-driven: a second exam with a DIFFERENT pattern (negative marking 0.5, 60-min single paper, +2/-0.5) loads with zero code change. Verify before any real SSC use."
+  }
+}

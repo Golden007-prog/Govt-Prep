@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "note": "YouTube channel whitelist for ranking lecture search results (spec §7b / AGENTS.md). subjectIds reference taxonomy subject ids; trust 1-5 ranks tie-breaks.",
+  "channels": [
+    { "name": "Gate Smashers", "handle": "@GateSmashers", "trust": 5, "subjectIds": ["dbms", "operating-systems", "computer-networks", "theory-of-computation", "computer-organization-architecture", "compiler-design"] },
+    { "name": "Neso Academy", "handle": "@nesoacademy", "trust": 5, "subjectIds": ["digital-logic", "computer-networks", "theory-of-computation", "dbms", "compiler-design"] },
+    { "name": "Knowledge Gate", "handle": "@KnowledgeGate", "trust": 4, "subjectIds": ["operating-systems", "dbms", "computer-networks", "algorithms", "software-engineering-web"] },
+    { "name": "Jenny's Lectures CS IT", "handle": "@JennyslecturesCSIT", "trust": 4, "subjectIds": ["programming-data-structures", "algorithms", "dbms"] },
+    { "name": "Feel Free to Learn", "handle": "@FeelFreetoLearn", "trust": 3, "subjectIds": ["computer-networks", "theory-of-computation"] }
+  ]
+}
