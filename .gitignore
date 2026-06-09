@@ -38,3 +38,6 @@ Thumbs.db
 *.local
 .cache/
 node_modules
+
+# Local MCP server config (may reference project/secrets) — keep out of the repo
+.mcp.json
