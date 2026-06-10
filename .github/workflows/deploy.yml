@@ -30,9 +30,12 @@ jobs:
           cache: npm
           cache-dependency-path: Frontend/package-lock.json
 
+      # npm install (not ci): the lockfile is generated on Windows and omits nested deps of
+      # Linux-only napi/rolldown optional packages (@emnapi/*), which makes npm ci reject it.
+      # install still honors every version pinned in the lockfile.
       - name: Install dependencies
         working-directory: Frontend
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       - name: Build (tsc -b && vite build)
         working-directory: Frontend
