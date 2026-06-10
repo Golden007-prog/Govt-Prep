@@ -128,11 +128,11 @@ export function MockResultsScreen({ exam, onStartMock }: MockResultsScreenProps)
         <div className="glass-panel p-6 sm:p-8 bg-gradient-to-r from-cyan-950/40 via-darkCard/50 to-indigo-950/40 border-cyan-500/10">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
             <div>
-              <span className="text-xs font-semibold text-emerald-400 tracking-widest uppercase">
-                {isLatest ? 'Latest attempt' : 'Selected attempt'}
+              <span className="eyebrow !text-emerald-400">
+                {isLatest ? 'Latest Attempt' : 'Selected Attempt'}
               </span>
               <div className="flex items-baseline gap-2 mt-2">
-                <span className="text-5xl font-extrabold font-display text-white font-mono">
+                <span className="text-5xl font-extrabold font-display text-white font-mono drop-shadow-[0_0_20px_rgba(34,211,238,0.45)]">
                   {an.totalScore}
                 </span>
                 <span className="text-xl font-mono text-slate-400">/ {an.maxScore}</span>
@@ -143,14 +143,14 @@ export function MockResultsScreen({ exam, onStartMock }: MockResultsScreenProps)
               </p>
             </div>
             <div className="flex gap-3 shrink-0">
-              <div className="text-center bg-slate-900/40 border border-white/5 rounded-2xl px-5 py-4">
-                <div className="text-3xl font-extrabold font-display font-mono text-cyan-400">
+              <div className="glass-inset text-center px-5 py-4">
+                <div className="text-3xl font-extrabold font-display font-mono text-cyan-400 drop-shadow-[0_0_12px_rgba(34,211,238,0.4)]">
                   {pct(an.accuracy)}
                 </div>
                 <div className="text-[11px] uppercase tracking-wider text-slate-400 mt-1">accuracy</div>
               </div>
-              <div className="text-center bg-slate-900/40 border border-white/5 rounded-2xl px-5 py-4">
-                <div className="text-3xl font-extrabold font-display font-mono text-indigo-400">
+              <div className="glass-inset text-center px-5 py-4">
+                <div className="text-3xl font-extrabold font-display font-mono text-indigo-400 drop-shadow-[0_0_12px_rgba(99,102,241,0.4)]">
                   {an.avgSecondsPerQuestion}s
                 </div>
                 <div className="text-[11px] uppercase tracking-wider text-slate-400 mt-1">
@@ -164,9 +164,21 @@ export function MockResultsScreen({ exam, onStartMock }: MockResultsScreenProps)
         {/* Stat cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: 'Attempted', value: an.attempted, cls: 'text-cyan-300' },
-            { label: 'Correct', value: an.correct, cls: 'text-emerald-300' },
-            { label: 'Wrong', value: an.wrong, cls: 'text-rose-300' },
+            {
+              label: 'Attempted',
+              value: an.attempted,
+              cls: 'text-cyan-300 drop-shadow-[0_0_10px_rgba(34,211,238,0.35)]',
+            },
+            {
+              label: 'Correct',
+              value: an.correct,
+              cls: 'text-emerald-300 drop-shadow-[0_0_10px_rgba(16,185,129,0.35)]',
+            },
+            {
+              label: 'Wrong',
+              value: an.wrong,
+              cls: 'text-rose-300 drop-shadow-[0_0_10px_rgba(244,63,94,0.35)]',
+            },
             { label: 'Skipped', value: an.skipped, cls: 'text-slate-300' },
           ].map((s) => (
             <div key={s.label} className="glass-panel p-5">
@@ -216,9 +228,9 @@ export function MockResultsScreen({ exam, onStartMock }: MockResultsScreenProps)
                     {Math.round(sectionBarPct(s))}% of max
                   </span>
                 </div>
-                <div className="h-2 rounded-full bg-slate-800 overflow-hidden">
+                <div className="h-2 rounded-full bg-slate-800/80 overflow-hidden">
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-indigo-500"
+                    className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-indigo-500 shadow-[0_0_8px_rgba(6,182,212,0.5)] transition-all duration-500"
                     style={{ width: `${sectionBarPct(s)}%` }}
                   />
                 </div>
@@ -237,6 +249,15 @@ export function MockResultsScreen({ exam, onStartMock }: MockResultsScreenProps)
               role="img"
               aria-label="Score trend across mock attempts"
             >
+              <defs>
+                <filter id="mockTrendGlow" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur stdDeviation="3" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+              </defs>
               {chart.zeroY != null && (
                 <line
                   x1={0}
@@ -256,6 +277,7 @@ export function MockResultsScreen({ exam, onStartMock }: MockResultsScreenProps)
                   strokeWidth={2.5}
                   strokeLinejoin="round"
                   strokeLinecap="round"
+                  filter="url(#mockTrendGlow)"
                 />
               )}
               {chart.points.map((p) => (
@@ -300,13 +322,13 @@ export function MockResultsScreen({ exam, onStartMock }: MockResultsScreenProps)
                 <li key={a.id}>
                   <button
                     onClick={() => setSelectedId(a.id)}
-                    className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-colors ${
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all ${
                       isSel
-                        ? 'bg-cyan-500/10 border-cyan-500/30'
-                        : 'bg-slate-900/40 border-white/5 hover:border-slate-600'
+                        ? 'border bg-cyan-500/10 border-cyan-500/30 shadow-[0_0_16px_rgba(6,182,212,0.15)]'
+                        : 'glass-inset hover:border-cyan-500/30 hover:bg-slate-900/70'
                     }`}
                   >
-                    <span className="shrink-0 w-9 h-9 rounded-lg bg-slate-800/80 border border-white/5 flex items-center justify-center text-[11px] font-mono text-slate-400">
+                    <span className="glass-tile w-9 h-9 text-[11px] font-mono text-slate-400 shrink-0">
                       #{attempts.length - idx}
                     </span>
                     <div className="flex-grow min-w-0">
@@ -317,7 +339,7 @@ export function MockResultsScreen({ exam, onStartMock }: MockResultsScreenProps)
                         {a.analytics.attempted} attempted · {a.analytics.correct} correct
                       </p>
                     </div>
-                    <span className="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full border text-emerald-300 bg-emerald-500/10 border-emerald-500/20">
+                    <span className="chip text-emerald-300 bg-emerald-500/10 border-emerald-500/25 shrink-0">
                       {pct(a.analytics.accuracy)}
                     </span>
                     <span className="shrink-0 font-mono text-sm text-white">
@@ -338,9 +360,7 @@ export function MockResultsScreen({ exam, onStartMock }: MockResultsScreenProps)
     <div className="max-w-5xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
-          <span className="text-xs font-semibold text-cyan-400 tracking-widest uppercase">
-            Mock analytics
-          </span>
+          <span className="eyebrow">Mock Analytics</span>
           <h2 className="text-3xl font-extrabold tracking-tight text-white font-display mt-1">
             {exam.shortName} Mock Results
           </h2>
@@ -368,7 +388,7 @@ export function MockResultsScreen({ exam, onStartMock }: MockResultsScreenProps)
         renderSelected(selected)
       ) : (
         <div className="glass-panel p-10 text-center">
-          <div className="text-4xl">📝</div>
+          <span className="glass-tile w-16 h-16 text-3xl">📝</span>
           <h3 className="text-xl font-bold text-white font-display mt-3">No mock attempts yet</h3>
           <p className="text-sm text-slate-400 mt-2 max-w-md mx-auto">
             Take a full-pattern CBT mock to see your score, sectional accuracy and

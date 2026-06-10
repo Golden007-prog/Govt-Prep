@@ -237,7 +237,7 @@ export function QuizRunner(props: QuizRunnerProps): ReactElement | null {
     const ringColor =
       pct >= 70 ? 'text-emerald-400' : pct >= 40 ? 'text-amber-400' : 'text-rose-400';
     return (
-      <div className="glass-panel p-6 sm:p-8 space-y-6">
+      <div className="glass-panel p-6 sm:p-8 space-y-6 !rounded-3xl bg-gradient-to-br from-cyan-950/30 via-darkCard/40 to-indigo-950/30">
         <div className="flex flex-col sm:flex-row items-center gap-6">
           <div className="relative w-32 h-32 shrink-0">
             <svg viewBox="0 0 100 100" className="w-32 h-32 -rotate-90">
@@ -250,7 +250,7 @@ export function QuizRunner(props: QuizRunnerProps): ReactElement | null {
                 strokeWidth="8"
                 strokeLinecap="round"
                 stroke="currentColor"
-                className={ringColor}
+                className={`${ringColor} drop-shadow-[0_0_6px_currentColor]`}
                 strokeDasharray={`${(result.scoreRatio * C).toFixed(2)} ${C.toFixed(2)}`}
               />
             </svg>
@@ -259,9 +259,8 @@ export function QuizRunner(props: QuizRunnerProps): ReactElement | null {
             </div>
           </div>
           <div className="text-center sm:text-left">
-            <h3 className="text-xl font-bold text-white font-display">
-              {title ?? 'Quiz'} — complete!
-            </h3>
+            <span className="eyebrow">🎉 Quiz Complete</span>
+            <h3 className="text-xl font-bold text-white font-display mt-1">{title ?? 'Quiz'}</h3>
             <p className="text-sm text-slate-300 mt-1">
               You got <span className="font-semibold text-cyan-300">{result.correct}</span> of{' '}
               <span className="font-semibold text-white">{result.total}</span> questions right.
@@ -279,7 +278,7 @@ export function QuizRunner(props: QuizRunnerProps): ReactElement | null {
             {unlocked.map((a) => (
               <span
                 key={a.id}
-                className="flex items-center gap-1.5 text-xs font-semibold text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-full px-3 py-1.5"
+                className="chip text-amber-300 bg-amber-500/10 border-amber-500/25 shadow-[0_0_14px_rgba(245,158,11,0.15)]"
               >
                 <span>{a.icon}</span> Unlocked: {a.title}
               </span>
@@ -359,14 +358,14 @@ export function QuizRunner(props: QuizRunnerProps): ReactElement | null {
           <span className="text-[11px] font-mono text-slate-400">
             Q {index + 1}/{total}
           </span>
-          <span className="text-[10px] font-bold px-2 py-1 rounded-full border text-emerald-300 bg-emerald-500/10 border-emerald-500/20">
+          <span className="chip text-emerald-300 bg-emerald-500/10 border-emerald-500/25 font-mono">
             {correctSoFar} correct
           </span>
         </div>
       </div>
-      <div className="h-1.5 rounded-full bg-slate-800 overflow-hidden">
+      <div className="h-1.5 rounded-full bg-slate-800/80 overflow-hidden">
         <div
-          className="h-full bg-cyan-500/70 transition-all duration-300"
+          className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-teal-400 shadow-[0_0_8px_rgba(6,182,212,0.5)] transition-all duration-300"
           style={{ width: `${(answers.length / total) * 100}%` }}
         />
       </div>
@@ -391,10 +390,13 @@ export function QuizRunner(props: QuizRunnerProps): ReactElement | null {
       {current.type === 'mcq' && current.options && (
         <div className="space-y-2">
           {current.options.map((opt, i) => {
-            let cls = 'bg-slate-900/40 border-white/5 hover:border-cyan-500/40 hover:bg-slate-900/70';
+            let cls =
+              'bg-slate-900/40 border-white/5 hover:border-cyan-500/40 hover:bg-slate-900/70 hover:shadow-[0_0_18px_rgba(6,182,212,0.12)]';
             if (answeredCurrent) {
-              if (i === correctIdx) cls = 'bg-emerald-500/10 border-emerald-500/40';
-              else if (i === selectedIdx) cls = 'bg-rose-500/10 border-rose-500/40';
+              if (i === correctIdx)
+                cls = 'bg-emerald-500/10 border-emerald-500/50 shadow-[0_0_18px_rgba(16,185,129,0.25)]';
+              else if (i === selectedIdx)
+                cls = 'bg-rose-500/10 border-rose-500/50 shadow-[0_0_18px_rgba(244,63,94,0.25)]';
               else cls = 'bg-slate-900/30 border-white/5 opacity-60';
             }
             return (
@@ -402,9 +404,9 @@ export function QuizRunner(props: QuizRunnerProps): ReactElement | null {
                 key={i}
                 onClick={() => selectOption(i)}
                 disabled={answeredCurrent}
-                className={`w-full text-left p-3.5 rounded-xl border transition-colors flex items-center gap-3 disabled:cursor-default ${cls}`}
+                className={`w-full text-left p-3.5 rounded-xl border transition-all duration-200 flex items-center gap-3 disabled:cursor-default ${cls}`}
               >
-                <span className="w-6 h-6 shrink-0 rounded-md bg-slate-800 border border-slate-700 flex items-center justify-center text-[11px] font-mono text-slate-300">
+                <span className="glass-tile w-6 h-6 shrink-0 !rounded-md text-[11px] font-mono text-slate-300">
                   {LETTERS[i] ?? i + 1}
                 </span>
                 <span className="text-sm text-slate-200">{opt}</span>
@@ -432,7 +434,7 @@ export function QuizRunner(props: QuizRunnerProps): ReactElement | null {
             disabled={grading || selfAssess}
             rows={4}
             placeholder="Write your answer in 1-3 sentences…"
-            className="w-full bg-slate-900 border border-slate-700/50 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-500 transition-colors resize-y"
+            className="input-glass text-sm resize-y"
           />
           {!selfAssess && (
             <button
@@ -452,7 +454,7 @@ export function QuizRunner(props: QuizRunnerProps): ReactElement | null {
           )}
 
           {selfAssess && (
-            <div className="p-4 rounded-xl bg-slate-900/40 border border-white/5 space-y-3">
+            <div className="glass-inset p-4 space-y-3">
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                 Self-assessment — compare with the reference answer
               </p>
@@ -477,8 +479,8 @@ export function QuizRunner(props: QuizRunnerProps): ReactElement | null {
           <div
             className={`p-4 rounded-xl border ${
               currentRecord.correct
-                ? 'bg-emerald-500/10 border-emerald-500/20'
-                : 'bg-rose-500/10 border-rose-500/20'
+                ? 'bg-emerald-500/10 border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.15)]'
+                : 'bg-rose-500/10 border-rose-500/30 shadow-[0_0_20px_rgba(244,63,94,0.15)]'
             }`}
           >
             <p

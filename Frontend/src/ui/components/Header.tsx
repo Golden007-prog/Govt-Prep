@@ -60,16 +60,18 @@ export const Header: React.FC<HeaderProps> = ({
   }, [location]);
 
   const navLinkCls = ({ isActive }: { isActive: boolean }) =>
-    `px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-      isActive ? 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/20' : 'text-slate-400 hover:text-white'
+    `px-3.5 py-2 rounded-full text-xs font-semibold transition-all duration-200 border ${
+      isActive
+        ? 'bg-cyan-500/15 text-cyan-200 border-cyan-400/30 shadow-[0_0_16px_rgba(6,182,212,0.25)]'
+        : 'text-slate-400 border-transparent hover:text-white hover:bg-white/5'
     }`;
 
   return (
-    <header className="border-b border-white/5 bg-darkBg/80 backdrop-blur-md sticky top-0 z-50">
+    <header className="border-b border-white/10 bg-darkBg/60 backdrop-blur-xl sticky top-0 z-50 shadow-[0_4px_30px_rgba(0,0,0,0.3),inset_0_-1px_0_rgba(255,255,255,0.03)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
         {/* Branding */}
         <div className="flex items-center gap-3 cursor-pointer shrink-0" onClick={() => navigate('/')}>
-          <div className="bg-gradient-to-tr from-cyan-500 to-indigo-500 p-2 rounded-xl shadow-neon-cyan/20">
+          <div className="bg-gradient-to-tr from-cyan-500 to-indigo-500 p-2 rounded-xl shadow-[0_0_18px_rgba(6,182,212,0.45)]">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
             </svg>
@@ -101,13 +103,19 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Stats + controls */}
         <div className="flex items-center gap-2 sm:gap-3">
           <div className="hidden md:flex items-center gap-2 text-sm font-medium">
-            <div className="flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1.5 rounded-xl text-amber-400">
+            <div
+              title={`${stats.streak}-day study streak`}
+              className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500/15 to-orange-500/10 border border-amber-400/25 px-3 py-1.5 rounded-full text-amber-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+            >
               <span className="text-sm">🔥</span>
-              <span className="font-mono text-xs">{stats.streak}d</span>
+              <span className="font-mono text-xs font-bold">{stats.streak}d</span>
             </div>
-            <div className="flex items-center gap-1.5 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1.5 rounded-xl text-indigo-400">
+            <div
+              title={`${stats.xp} lifetime XP`}
+              className="flex items-center gap-1.5 bg-gradient-to-r from-indigo-500/15 to-violet-500/10 border border-indigo-400/25 px-3 py-1.5 rounded-full text-indigo-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+            >
               <span className="text-sm">✨</span>
-              <span className="font-mono text-xs">{stats.xp}</span>
+              <span className="font-mono text-xs font-bold">{stats.xp}</span>
             </div>
           </div>
 

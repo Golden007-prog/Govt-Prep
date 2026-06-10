@@ -32,25 +32,25 @@ const RATING_META: ReadonlyArray<{ rating: RatingValue; label: string; cls: stri
   {
     rating: 1,
     label: 'Again',
-    cls: 'text-rose-300 bg-rose-500/10 border-rose-500/20 hover:bg-rose-500/20',
+    cls: 'text-rose-300 bg-rose-500/10 border-rose-500/25 hover:bg-rose-500/20 hover:border-rose-500/40 hover:shadow-[0_0_18px_rgba(244,63,94,0.2)]',
     fallback: '<10m',
   },
   {
     rating: 2,
     label: 'Hard',
-    cls: 'text-amber-300 bg-amber-500/10 border-amber-500/20 hover:bg-amber-500/20',
+    cls: 'text-amber-300 bg-amber-500/10 border-amber-500/25 hover:bg-amber-500/20 hover:border-amber-500/40 hover:shadow-[0_0_18px_rgba(245,158,11,0.2)]',
     fallback: '1h',
   },
   {
     rating: 3,
     label: 'Good',
-    cls: 'text-cyan-300 bg-cyan-500/10 border-cyan-500/20 hover:bg-cyan-500/20',
+    cls: 'text-cyan-300 bg-cyan-500/10 border-cyan-500/25 hover:bg-cyan-500/20 hover:border-cyan-500/40 hover:shadow-[0_0_18px_rgba(6,182,212,0.2)]',
     fallback: '1d',
   },
   {
     rating: 4,
     label: 'Easy',
-    cls: 'text-emerald-300 bg-emerald-500/10 border-emerald-500/20 hover:bg-emerald-500/20',
+    cls: 'text-emerald-300 bg-emerald-500/10 border-emerald-500/25 hover:bg-emerald-500/20 hover:border-emerald-500/40 hover:shadow-[0_0_18px_rgba(16,185,129,0.2)]',
     fallback: '4d',
   },
 ];
@@ -92,8 +92,8 @@ function StatCards({ stats }: { stats: SrsStats }) {
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {items.map((s) => (
-        <div key={s.label} className="glass-panel p-5">
-          <div className="text-2xl">{s.icon}</div>
+        <div key={s.label} className="glass-inset p-4">
+          <span className="glass-tile w-10 h-10 text-xl">{s.icon}</span>
           <div className="text-2xl font-bold text-white font-display mt-2">{s.value}</div>
           <div className="text-[11px] uppercase tracking-wider text-slate-400 mt-1">{s.label}</div>
         </div>
@@ -276,8 +276,8 @@ export function ReviewScreen() {
     <div className="max-w-3xl mx-auto space-y-6">
       {/* Header */}
       <div>
-        <span className="text-xs font-semibold tracking-widest text-cyan-400 uppercase">Spaced repetition</span>
-        <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white font-display mt-1">
+        <span className="eyebrow">Spaced Repetition</span>
+        <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white font-display mt-2">
           Flashcard Review
         </h2>
         <p className="text-sm text-slate-400 mt-1">
@@ -286,7 +286,7 @@ export function ReviewScreen() {
       </div>
 
       {error && (
-        <div className="text-sm text-rose-300 bg-rose-500/10 border border-rose-500/20 rounded-xl px-4 py-3">
+        <div className="text-sm text-rose-300 bg-rose-500/10 backdrop-blur border border-rose-500/25 rounded-xl px-4 py-3">
           ⚠️ {error}
         </div>
       )}
@@ -299,7 +299,7 @@ export function ReviewScreen() {
 
       {phase === 'error' && (
         <div className="glass-panel p-8 text-center">
-          <div className="text-3xl">😵</div>
+          <span className="glass-tile w-12 h-12 text-2xl">😵</span>
           <p className="text-sm text-slate-300 mt-3">Could not load the review queue.</p>
           <button onClick={restart} className="btn-secondary text-sm mt-4">
             Retry
@@ -310,7 +310,7 @@ export function ReviewScreen() {
       {phase === 'empty' && (
         <>
           <div className="glass-panel p-8 text-center">
-            <div className="text-4xl">🎉</div>
+            <span className="glass-tile w-14 h-14 text-3xl">🎉</span>
             <h3 className="text-2xl font-extrabold tracking-tight text-white font-display mt-3">All caught up</h3>
             <p className="text-sm text-slate-400 mt-2 max-w-md mx-auto">
               No cards are due right now. Study a topic or take a quiz — wrong answers automatically become review
@@ -325,19 +325,19 @@ export function ReviewScreen() {
         <div className="space-y-4">
           {/* Session header: counter + early exit */}
           <div className="flex items-center justify-between gap-3 text-xs text-slate-400">
-            <span className="font-mono">
+            <span className="chip text-slate-300 bg-slate-800/60 border-white/10 font-mono">
               Card {index + 1} / {queue.length}
             </span>
             <div className="flex items-center gap-3">
-              <span>{reviewedCount} rated</span>
-              <button onClick={() => void finishSession()} className="btn-secondary text-xs px-3 py-1.5">
+              <span className="font-mono">{reviewedCount} rated</span>
+              <button onClick={() => void finishSession()} className="btn-ghost">
                 End session
               </button>
             </div>
           </div>
-          <div className="h-1.5 rounded-full bg-slate-800 overflow-hidden">
+          <div className="h-1.5 rounded-full bg-slate-800/80 overflow-hidden">
             <div
-              className="h-full bg-cyan-500/60 transition-all duration-300"
+              className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-teal-400 shadow-[0_0_8px_rgba(6,182,212,0.5)] transition-all duration-300"
               style={{ width: `${(index / queue.length) * 100}%` }}
             />
           </div>
@@ -346,7 +346,9 @@ export function ReviewScreen() {
           <div style={{ perspective: '1400px' }}>
             <div
               onClick={flip}
-              className={`relative h-72 sm:h-80 transition-transform duration-500 ${flipped ? '' : 'cursor-pointer'}`}
+              className={`relative h-72 sm:h-80 rounded-2xl transition-transform duration-500 ${
+                flipped ? 'shadow-[0_0_45px_rgba(6,182,212,0.15)]' : 'cursor-pointer'
+              }`}
               style={{
                 transformStyle: 'preserve-3d',
                 transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
@@ -365,7 +367,7 @@ export function ReviewScreen() {
               </div>
               {/* Back */}
               <div
-                className="absolute inset-0 glass-panel p-6 flex flex-col overflow-y-auto border-cyan-500/20"
+                className="absolute inset-0 glass-panel p-6 flex flex-col overflow-y-auto !border-cyan-500/30"
                 style={{
                   backfaceVisibility: 'hidden',
                   WebkitBackfaceVisibility: 'hidden',
@@ -387,7 +389,7 @@ export function ReviewScreen() {
                 <button
                   key={meta.rating}
                   onClick={() => void handleRate(meta.rating)}
-                  className={`rounded-xl border px-2 py-3 text-center transition-colors ${meta.cls}`}
+                  className={`rounded-xl border backdrop-blur px-2 py-3 text-center transition-all duration-200 active:scale-[0.98] ${meta.cls}`}
                 >
                   <span className="block text-sm font-bold">{meta.label}</span>
                   <span className="block text-[10px] font-mono mt-1 opacity-80">
@@ -408,7 +410,7 @@ export function ReviewScreen() {
       {phase === 'done' && (
         <>
           <div className="glass-panel p-8 text-center">
-            <div className="text-4xl">🏁</div>
+            <span className="glass-tile w-14 h-14 text-3xl">🏁</span>
             <h3 className="text-2xl font-extrabold tracking-tight text-white font-display mt-3">Session complete</h3>
             <p className="text-sm text-slate-400 mt-2">
               You reviewed <strong className="text-cyan-300">{reviewedCount}</strong>{' '}
@@ -426,7 +428,7 @@ export function ReviewScreen() {
                 {sessionAchievements.map((a) => (
                   <span
                     key={a.id}
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-full px-3 py-1.5"
+                    className="chip text-amber-300 bg-amber-500/10 border-amber-500/25"
                     title={a.description}
                   >
                     <span>{a.icon}</span> {a.title} unlocked!

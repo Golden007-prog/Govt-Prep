@@ -79,9 +79,7 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ mode, onSetupComplete 
   return (
     <div className="max-w-md mx-auto my-12 px-4 sm:px-6">
       <div className="text-center mb-8">
-        <span className="text-xs font-semibold tracking-wider text-cyan-400 uppercase font-sans">
-          Welcome to GovPrep
-        </span>
+        <span className="eyebrow">Welcome to GovPrep</span>
         <h2 className="text-3xl font-extrabold tracking-tight text-white font-display mt-2">
           Setup Study Companion
         </h2>
@@ -92,17 +90,17 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ mode, onSetupComplete 
 
       <div className="space-y-6">
         <div className="glass-panel p-6 space-y-4">
-          <h3 className="text-lg font-bold text-white font-display flex items-center gap-2">
-            <span>🧠</span> Configure AI Brain
+          <h3 className="text-lg font-bold text-white font-display flex items-center gap-2.5">
+            <span className="glass-tile w-9 h-9 text-lg shrink-0">🧠</span> Configure AI Brain
           </h3>
 
           {mode === 'local' ? (
             <div className="space-y-4">
-              <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
-                <div className="flex gap-2">
-                  <span className="text-lg">💻</span>
+              <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/25 rounded-xl backdrop-blur shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+                <div className="flex gap-2.5">
+                  <span className="glass-tile w-9 h-9 text-lg shrink-0">💻</span>
                   <div>
-                    <p className="text-xs font-bold text-emerald-400 uppercase tracking-wider">
+                    <p className="text-xs font-bold text-emerald-300 uppercase tracking-wider">
                       Claude Subscription Active (OAuth)
                     </p>
                     <p className="text-xs text-slate-300 mt-1">
@@ -113,7 +111,7 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ mode, onSetupComplete 
                 </div>
               </div>
 
-              <div className="p-3.5 bg-slate-900/40 border border-white/5 rounded-xl space-y-1.5">
+              <div className="glass-inset p-3.5 space-y-1.5">
                 <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Headless / token auth</p>
                 <p className="text-[11px] text-slate-400 leading-relaxed">
                   Signed in to Claude Code on this machine? You&apos;re done. For a headless setup, run{' '}
@@ -125,11 +123,11 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ mode, onSetupComplete 
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="p-3.5 bg-cyan-500/10 border border-cyan-500/20 rounded-xl">
-                <div className="flex gap-2">
-                  <span className="text-lg">🌐</span>
+              <div className="p-3.5 bg-cyan-500/10 border border-cyan-500/25 rounded-xl backdrop-blur shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+                <div className="flex gap-2.5">
+                  <span className="glass-tile w-9 h-9 text-lg shrink-0">🌐</span>
                   <div>
-                    <p className="text-xs font-bold text-cyan-400 uppercase tracking-wider">Hosted Mode (Browser Only)</p>
+                    <p className="text-xs font-bold text-cyan-300 uppercase tracking-wider">Hosted Mode (Browser Only)</p>
                     <p className="text-xs text-slate-300 mt-1">
                       Bring your own Anthropic API key. Requests go directly from your browser to Anthropic —
                       the key never touches any server of ours.
@@ -147,7 +145,7 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ mode, onSetupComplete 
                   placeholder="sk-ant-..."
                   value={anthropicKey}
                   onChange={(e) => setAnthropicKey(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700/50 rounded-xl px-4 py-2.5 text-slate-200 focus:outline-none focus:border-cyan-500 transition-colors"
+                  className="input-glass font-mono"
                 />
                 <p className="text-[10px] text-slate-500">
                   Stored on-device in localStorage. Tip: set a low monthly spend cap on this key at
@@ -159,12 +157,12 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ mode, onSetupComplete 
 
           {testState !== 'idle' && (
             <div
-              className={`p-3 rounded-xl border text-xs flex items-center gap-2 ${
+              className={`p-3 rounded-xl border backdrop-blur text-xs flex items-center gap-2 ${
                 testState === 'testing'
-                  ? 'bg-slate-800/40 border-slate-700 text-slate-300'
+                  ? 'bg-slate-900/50 border-white/10 text-slate-300'
                   : testState === 'success'
-                    ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                    : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
+                    ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-300 shadow-[0_0_18px_rgba(16,185,129,0.12)]'
+                    : 'bg-rose-500/10 border-rose-500/25 text-rose-300 shadow-[0_0_18px_rgba(244,63,94,0.12)]'
               }`}
             >
               {testState === 'testing' && (
@@ -185,7 +183,7 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ mode, onSetupComplete 
           <button
             onClick={handleComplete}
             disabled={!canComplete}
-            className="btn-success text-sm flex items-center gap-1.5 shadow-neon-green/10"
+            className="btn-success text-sm flex items-center gap-1.5"
           >
             Launch Companion
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

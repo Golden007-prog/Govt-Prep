@@ -104,9 +104,7 @@ export function CurrentAffairsScreen({ exam, language }: CurrentAffairsScreenPro
       <div className="glass-panel p-6 sm:p-8 bg-gradient-to-r from-emerald-950/40 via-darkCard/50 to-cyan-950/40 border-emerald-500/10">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
-            <span className="text-xs font-semibold text-emerald-400 tracking-widest uppercase">
-              🗞️ Current affairs
-            </span>
+            <span className="eyebrow !text-emerald-400">Current Affairs</span>
             <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white font-display mt-2">
               Today&apos;s digest
             </h2>
@@ -114,7 +112,7 @@ export function CurrentAffairsScreen({ exam, language }: CurrentAffairsScreenPro
               {fmtDay(today)} · {exam.shortName} · {language === 'hi' ? 'हिन्दी' : 'English'}
             </p>
           </div>
-          <span className="shrink-0 self-start text-[11px] font-semibold text-amber-300/90 bg-amber-500/5 border border-amber-500/20 rounded-full px-3 py-1.5">
+          <span className="chip shrink-0 self-start text-amber-300 bg-amber-500/10 border-amber-500/25">
             ⚠️ AI revision capsule — verify against PIB/official sources
           </span>
         </div>
@@ -123,11 +121,11 @@ export function CurrentAffairsScreen({ exam, language }: CurrentAffairsScreenPro
           <div className="mt-6">
             {todayDigest ? (
               <div className="flex flex-wrap items-center gap-3">
-                <span className="text-[11px] font-semibold text-slate-300 bg-slate-900/50 border border-white/5 px-3 py-1.5 rounded-full">
-                  📋 {todayDigest.items.length} items
+                <span className="chip text-slate-300 bg-slate-900/50 border-white/5">
+                  📋 <span className="font-mono">{todayDigest.items.length}</span> items
                 </span>
-                <span className="text-[11px] font-semibold text-slate-300 bg-slate-900/50 border border-white/5 px-3 py-1.5 rounded-full">
-                  📝 {todayDigest.quiz.length} MCQs
+                <span className="chip text-slate-300 bg-slate-900/50 border-white/5">
+                  📝 <span className="font-mono">{todayDigest.quiz.length}</span> MCQs
                 </span>
                 <button
                   onClick={() => {
@@ -142,7 +140,7 @@ export function CurrentAffairsScreen({ exam, language }: CurrentAffairsScreenPro
                   onClick={() => void handleGenerate(true)}
                   disabled={generating}
                   title="Discard today's cached digest and build a fresh one"
-                  className="text-[11px] font-semibold text-slate-400 hover:text-white border border-white/5 hover:border-slate-600 bg-slate-900/40 px-3 py-1.5 rounded-full transition-colors disabled:opacity-50"
+                  className="btn-ghost"
                 >
                   {generating ? 'Regenerating…' : '↻ Regenerate'}
                 </button>
@@ -176,7 +174,7 @@ export function CurrentAffairsScreen({ exam, language }: CurrentAffairsScreenPro
         </div>
       ) : digests.length === 0 ? (
         <div className="glass-panel p-8 text-center">
-          <div className="text-3xl">🗞️</div>
+          <span className="glass-tile w-14 h-14 text-3xl">🗞️</span>
           <p className="text-sm text-slate-300 mt-3 font-semibold">No digests cached yet</p>
           <p className="text-xs text-slate-500 mt-1">
             Generate today&apos;s digest above — it&apos;s cached locally, so the past week stays available offline.
@@ -195,9 +193,9 @@ export function CurrentAffairsScreen({ exam, language }: CurrentAffairsScreenPro
                     setSelectedDate(d.date);
                     setShowQuiz(false);
                   }}
-                  className={`px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors ${
+                  className={`chip transition-all ${
                     active
-                      ? 'bg-cyan-500/15 border-cyan-500/40 text-cyan-300'
+                      ? 'bg-cyan-500/15 border-cyan-500/40 text-cyan-300 shadow-[0_0_14px_rgba(6,182,212,0.3)]'
                       : 'bg-slate-900/40 border-white/5 text-slate-400 hover:text-slate-200 hover:border-slate-600'
                   }`}
                 >
@@ -212,15 +210,12 @@ export function CurrentAffairsScreen({ exam, language }: CurrentAffairsScreenPro
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {selected.items.map((item) => (
                 <article key={item.id} className="glass-panel-interactive p-5">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[10px] font-bold px-2 py-1 rounded-full border text-cyan-300 bg-cyan-500/10 border-cyan-500/20">
-                      {item.subject}
-                    </span>
-                    <span
-                      className={`text-[10px] font-bold px-2 py-1 rounded-full border capitalize ${REGION_META[item.region]}`}
-                    >
-                      {item.region}
-                    </span>
+                  <div className="flex items-start gap-3">
+                    <span className="glass-tile w-10 h-10 text-xl shrink-0">📰</span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="chip text-cyan-300 bg-cyan-500/10 border-cyan-500/25">{item.subject}</span>
+                      <span className={`chip capitalize ${REGION_META[item.region]}`}>{item.region}</span>
+                    </div>
                   </div>
                   <p className="text-sm text-slate-300 mt-3 leading-relaxed">{item.summary}</p>
                   <a
@@ -242,11 +237,14 @@ export function CurrentAffairsScreen({ exam, language }: CurrentAffairsScreenPro
           {selected && selected.quiz.length > 0 && (
             <div className="glass-panel p-6">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div>
-                  <h3 className="text-lg font-bold text-white font-display">📝 Daily quiz</h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    {selected.quiz.length} MCQs generated from {selected.date === today ? "today's" : 'this'} digest.
-                  </p>
+                <div className="flex items-center gap-3">
+                  <span className="glass-tile w-10 h-10 text-xl shrink-0">📝</span>
+                  <div>
+                    <h3 className="text-lg font-bold text-white font-display">Daily quiz</h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {selected.quiz.length} MCQs generated from {selected.date === today ? "today's" : 'this'} digest.
+                    </p>
+                  </div>
                 </div>
                 {!showQuiz && (
                   <button onClick={() => setShowQuiz(true)} className="btn-success text-sm shrink-0">

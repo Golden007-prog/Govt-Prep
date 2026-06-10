@@ -150,8 +150,8 @@ export function ChatScreen({ exam, language }: ChatScreenProps) {
       {/* Header + topic context */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
-          <span className="text-xs font-semibold tracking-widest text-cyan-400 uppercase">AI doubt solver</span>
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white font-display mt-1">
+          <span className="eyebrow">AI Doubt Solver</span>
+          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white font-display mt-2">
             Ask Claude
           </h2>
           <p className="text-sm text-slate-400 mt-1">
@@ -165,7 +165,7 @@ export function ChatScreen({ exam, language }: ChatScreenProps) {
           <select
             value={topicId}
             onChange={(e) => setTopicId(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-700/50 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-cyan-500 transition-colors"
+            className="input-glass text-sm"
           >
             <option value="">General — no specific topic</option>
             {subjectGroups.map(({ subject, topics }) => (
@@ -186,7 +186,7 @@ export function ChatScreen({ exam, language }: ChatScreenProps) {
         <div ref={scrollRef} className="flex-grow overflow-y-auto p-4 sm:p-6 space-y-4">
           {messages.length === 0 && (
             <div className="h-full flex flex-col items-center justify-center text-center px-6">
-              <div className="text-4xl mb-3">💬</div>
+              <span className="glass-tile w-14 h-14 text-3xl mb-3">💬</span>
               <p className="text-sm text-slate-300 font-semibold">Stuck on something?</p>
               <p className="text-xs text-slate-500 mt-1.5 max-w-sm">
                 Ask any doubt about {exam.shortName} — a concept, a tricky question, a shortcut. Pick a topic above to
@@ -199,7 +199,7 @@ export function ChatScreen({ exam, language }: ChatScreenProps) {
             if (m.role === 'user') {
               return (
                 <div key={i} className="flex justify-end">
-                  <div className="max-w-[85%] bg-cyan-500/10 border border-cyan-500/20 rounded-2xl rounded-br-sm px-4 py-2.5 text-sm text-slate-100 whitespace-pre-wrap">
+                  <div className="max-w-[85%] bg-cyan-500/15 backdrop-blur-md border border-cyan-400/25 rounded-2xl rounded-br-sm px-4 py-2.5 text-sm text-slate-100 whitespace-pre-wrap shadow-[0_4px_16px_rgba(6,182,212,0.1),inset_0_1px_0_rgba(255,255,255,0.1)]">
                     {m.content}
                   </div>
                 </div>
@@ -207,7 +207,7 @@ export function ChatScreen({ exam, language }: ChatScreenProps) {
             }
             return (
               <div key={i} className="flex justify-start">
-                <div className="max-w-[90%] bg-slate-900/60 border border-white/5 rounded-2xl rounded-bl-sm px-4 py-3">
+                <div className="max-w-[90%] bg-slate-900/60 backdrop-blur-md border border-white/10 rounded-2xl rounded-bl-sm px-4 py-3 shadow-[0_4px_16px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.05)]">
                   {m.content === '' && streaming && isLast ? (
                     <div className="flex items-center gap-2.5 text-sm text-slate-400">
                       <Spinner />
@@ -223,13 +223,13 @@ export function ChatScreen({ exam, language }: ChatScreenProps) {
         </div>
 
         {error && (
-          <div className="mx-4 sm:mx-6 mb-3 text-sm text-rose-300 bg-rose-500/10 border border-rose-500/20 rounded-xl px-4 py-3">
+          <div className="mx-4 sm:mx-6 mb-3 text-sm text-rose-300 bg-rose-500/10 backdrop-blur border border-rose-500/25 rounded-xl px-4 py-3">
             ⚠️ {error}
           </div>
         )}
 
         {/* Composer */}
-        <div className="border-t border-white/5 p-3 sm:p-4">
+        <div className="border-t border-white/10 bg-slate-950/40 backdrop-blur-xl rounded-b-2xl p-3 sm:p-4">
           <div className="flex items-end gap-2">
             <textarea
               value={input}
@@ -242,12 +242,12 @@ export function ChatScreen({ exam, language }: ChatScreenProps) {
               }}
               rows={2}
               placeholder={`Ask a ${exam.shortName} doubt…`}
-              className="flex-grow resize-none bg-slate-900 border border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-cyan-500 transition-colors"
+              className="input-glass flex-grow resize-none text-sm"
             />
             {streaming ? (
               <button
                 onClick={stop}
-                className="shrink-0 rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 transition-colors text-sm font-semibold px-4 py-2.5"
+                className="shrink-0 rounded-xl border border-rose-500/25 bg-rose-500/10 backdrop-blur text-rose-300 hover:bg-rose-500/20 hover:border-rose-500/40 hover:shadow-[0_0_18px_rgba(244,63,94,0.25)] transition-all duration-200 text-sm font-semibold px-4 py-2.5"
               >
                 ⏹ Stop
               </button>

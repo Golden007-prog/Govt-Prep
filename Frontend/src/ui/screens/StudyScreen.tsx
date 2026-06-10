@@ -43,9 +43,9 @@ const TABS: Array<{ id: TabId; label: string; icon: string }> = [
 ];
 
 const IMPORTANCE_META: Record<TopicImportance, { label: string; cls: string }> = {
-  high: { label: 'High yield', cls: 'text-amber-300 bg-amber-500/10 border-amber-500/20' },
-  medium: { label: 'Medium', cls: 'text-cyan-300 bg-cyan-500/10 border-cyan-500/20' },
-  low: { label: 'Low', cls: 'text-slate-300 bg-slate-500/10 border-slate-500/20' },
+  high: { label: 'High yield', cls: 'text-amber-300 bg-amber-500/10 border-amber-500/25' },
+  medium: { label: 'Medium', cls: 'text-cyan-300 bg-cyan-500/10 border-cyan-500/25' },
+  low: { label: 'Low', cls: 'text-slate-300 bg-slate-500/10 border-slate-500/25' },
 };
 
 /** Mastery below this marks a topic "weak" for the smart revision mix. */
@@ -136,7 +136,7 @@ export function StudyScreen({ exam, profile, initialTopicId }: StudyScreenProps)
               id="study-topic-picker"
               value={topicId ?? ''}
               onChange={(e) => navigate(`/study/${e.target.value}`, { replace: true })}
-              className="w-full bg-slate-900 border border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-cyan-500 transition-colors"
+              className="input-glass text-sm"
             >
               {exam.subjects.map((s) => (
                 <optgroup key={s.id} label={s.name}>
@@ -151,11 +151,10 @@ export function StudyScreen({ exam, profile, initialTopicId }: StudyScreenProps)
             {subject && <p className="text-[11px] text-slate-500">{subject.name}</p>}
           </div>
           <div className="flex-grow min-w-0">
-            <div className="flex items-center gap-2.5 flex-wrap">
+            <span className="eyebrow">Study Workspace</span>
+            <div className="flex items-center gap-2.5 flex-wrap mt-1.5">
               <h2 className="text-xl font-bold text-white font-display">{topic.name}</h2>
-              <span className={`text-[10px] font-bold px-2 py-1 rounded-full border ${importance.cls}`}>
-                {importance.label}
-              </span>
+              <span className={`chip ${importance.cls}`}>{importance.label}</span>
             </div>
             <p className="text-sm text-slate-400 mt-2 leading-relaxed">{topic.syllabusText}</p>
           </div>
@@ -167,7 +166,7 @@ export function StudyScreen({ exam, profile, initialTopicId }: StudyScreenProps)
         <div className="glass-panel p-5 bg-gradient-to-r from-indigo-950/40 via-darkCard/50 to-cyan-950/30 border-indigo-500/10">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-start gap-3">
-              <span className="text-2xl">🔁</span>
+              <span className="glass-tile w-10 h-10 text-xl shrink-0">🔁</span>
               <div>
                 <h3 className="text-sm font-bold text-white font-display">Smart revision</h3>
                 <p className="text-xs text-slate-400 mt-0.5">
@@ -186,10 +185,7 @@ export function StudyScreen({ exam, profile, initialTopicId }: StudyScreenProps)
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-indigo-300 font-display">🔁 Smart Revision Mix</h3>
-            <button
-              onClick={() => setRevisionOpen(false)}
-              className="text-xs text-slate-400 hover:text-white transition-colors"
-            >
+            <button onClick={() => setRevisionOpen(false)} className="btn-ghost">
               ✕ Close
             </button>
           </div>
@@ -305,7 +301,9 @@ function TopicWorkspace({ exam, topic, subject, language }: TopicWorkspaceProps)
   /** Generate-prompt panel shared by the notes/quiz/homework tabs. */
   const generatePrompt = (lead: string) => (
     <div className="text-center py-10 px-4 space-y-4">
-      <div className="text-4xl">✨</div>
+      <div>
+        <span className="glass-tile w-14 h-14 text-3xl">✨</span>
+      </div>
       <p className="text-sm text-slate-300 max-w-md mx-auto">{lead}</p>
       <p className="text-[11px] text-slate-500">~30s, one-time — cached forever for this topic.</p>
       {bundleError && (
@@ -332,10 +330,10 @@ function TopicWorkspace({ exam, topic, subject, language }: TopicWorkspaceProps)
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors ${
+            className={`px-3.5 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all duration-200 border ${
               tab === t.id
-                ? 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/20'
-                : 'text-slate-400 hover:text-slate-200 border border-transparent'
+                ? 'bg-cyan-500/15 text-cyan-200 border-cyan-400/30 shadow-[0_0_16px_rgba(6,182,212,0.25)]'
+                : 'text-slate-400 border-transparent hover:text-white hover:bg-white/5'
             }`}
           >
             {t.icon} {t.label}
@@ -359,7 +357,7 @@ function TopicWorkspace({ exam, topic, subject, language }: TopicWorkspaceProps)
                   rel="noopener noreferrer"
                   className="glass-panel-interactive p-4 flex items-center gap-3"
                 >
-                  <span className="text-xl">📺</span>
+                  <span className="glass-tile w-10 h-10 text-xl shrink-0">📺</span>
                   <div className="min-w-0 flex-grow">
                     <p className="text-sm font-semibold text-slate-200 truncate">{l.channel}</p>
                     <p className="text-[11px] text-slate-500 truncate">{topic.name} lectures</p>
@@ -392,10 +390,8 @@ function TopicWorkspace({ exam, topic, subject, language }: TopicWorkspaceProps)
                 )}
                 <Markdown text={bundle.notes.summaryMarkdown} />
                 {bundle.notes.keyPoints.length > 0 && (
-                  <div className="p-5 rounded-xl bg-slate-900/40 border border-white/5">
-                    <h4 className="text-xs font-semibold uppercase tracking-wider text-cyan-300 mb-3">
-                      ✅ Key points checklist
-                    </h4>
+                  <div className="glass-inset p-5">
+                    <h4 className="eyebrow mb-3">✅ Key Points Checklist</h4>
                     <ul className="space-y-2">
                       {bundle.notes.keyPoints.map((kp, i) => (
                         <li key={i} className="flex items-start gap-2.5 text-sm text-slate-300">
@@ -446,7 +442,9 @@ function TopicWorkspace({ exam, topic, subject, language }: TopicWorkspaceProps)
               generatePrompt('Homework is built from the topic notes — generate the study bundle first.')}
             {cacheState === 'ready' && bundle && homework === null && (
               <div className="text-center py-10 px-4 space-y-4">
-                <div className="text-4xl">📚</div>
+                <div>
+                  <span className="glass-tile w-14 h-14 text-3xl">📚</span>
+                </div>
                 <p className="text-sm text-slate-300 max-w-md mx-auto">
                   5 exam-difficulty practice problems with an answer key, tailored to this topic.
                 </p>
@@ -474,7 +472,9 @@ function TopicWorkspace({ exam, topic, subject, language }: TopicWorkspaceProps)
           <div>
             {mnemonics === null ? (
               <div className="text-center py-10 px-4 space-y-4">
-                <div className="text-4xl">🧠</div>
+                <div>
+                  <span className="glass-tile w-14 h-14 text-3xl">🧠</span>
+                </div>
                 <p className="text-sm text-slate-300 max-w-md mx-auto">
                   Vivid memory hooks — acronyms, mini-stories and imagery — for the hardest facts of{' '}
                   “{topic.name}”.

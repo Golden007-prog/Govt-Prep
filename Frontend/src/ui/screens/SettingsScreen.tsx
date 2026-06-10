@@ -34,11 +34,12 @@ interface Banner {
 
 function SectionHeader({ icon, title, sub }: { icon: string; title: string; sub?: string }) {
   return (
-    <div>
-      <h3 className="text-lg font-bold text-white font-display flex items-center gap-2">
-        <span>{icon}</span> {title}
-      </h3>
-      {sub && <p className="text-xs text-slate-500 mt-1">{sub}</p>}
+    <div className="flex items-start gap-3">
+      <span className="glass-tile w-10 h-10 text-xl shrink-0">{icon}</span>
+      <div className="min-w-0">
+        <h3 className="text-lg font-bold text-white font-display">{title}</h3>
+        {sub && <p className="text-xs text-slate-500 mt-1">{sub}</p>}
+      </div>
     </div>
   );
 }
@@ -185,7 +186,8 @@ export function SettingsScreen({ profile, onProfileChange, onOpenKeys }: Setting
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
-        <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white font-display">Settings</h2>
+        <span className="eyebrow">Preferences</span>
+        <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white font-display mt-2">Settings</h2>
         <p className="text-sm text-slate-400 mt-1">Keys, language, goals, backups and achievements.</p>
       </div>
 
@@ -244,9 +246,9 @@ export function SettingsScreen({ profile, onProfileChange, onOpenKeys }: Setting
                 key={code}
                 disabled={!profile || savingLang}
                 onClick={() => handleLanguage(code)}
-                className={`px-4 py-2 rounded-full border text-sm font-semibold transition-colors disabled:opacity-50 disabled:pointer-events-none ${
+                className={`chip !text-sm !px-4 !py-2 transition-all disabled:opacity-50 disabled:pointer-events-none ${
                   active
-                    ? 'bg-cyan-500/15 border-cyan-500/40 text-cyan-300'
+                    ? 'bg-cyan-500/15 border-cyan-500/40 text-cyan-300 shadow-[0_0_14px_rgba(6,182,212,0.25)]'
                     : 'bg-slate-900/40 border-white/5 text-slate-400 hover:text-slate-200 hover:border-slate-600'
                 }`}
               >
@@ -278,7 +280,7 @@ export function SettingsScreen({ profile, onProfileChange, onOpenKeys }: Setting
             value={goalInput}
             onChange={handleGoalInput}
             disabled={goal === null}
-            className="w-28 bg-slate-900 border border-slate-700/50 rounded-xl px-4 py-2 text-slate-200 font-mono text-sm focus:outline-none focus:border-cyan-500 transition-colors disabled:opacity-50"
+            className="input-glass !w-28 font-mono text-sm disabled:opacity-50"
           />
           <span className="text-xs text-slate-500 mr-2">XP / day</span>
           {GOAL_PRESETS.map((n) => (
@@ -286,9 +288,9 @@ export function SettingsScreen({ profile, onProfileChange, onOpenKeys }: Setting
               key={n}
               onClick={() => applyGoal(n)}
               disabled={goal === null}
-              className={`px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors disabled:opacity-50 ${
+              className={`chip font-mono transition-all disabled:opacity-50 ${
                 goal === n
-                  ? 'bg-cyan-500/15 border-cyan-500/40 text-cyan-300'
+                  ? 'bg-cyan-500/15 border-cyan-500/40 text-cyan-300 shadow-[0_0_14px_rgba(6,182,212,0.25)]'
                   : 'bg-slate-900/40 border-white/5 text-slate-400 hover:text-slate-200 hover:border-slate-600'
               }`}
             >
@@ -361,7 +363,7 @@ export function SettingsScreen({ profile, onProfileChange, onOpenKeys }: Setting
       <section className="glass-panel p-6">
         <div className="flex items-center justify-between gap-3">
           <SectionHeader icon="🏆" title="Achievements" />
-          <span className="text-[11px] font-bold px-2.5 py-1 rounded-full border text-amber-300 bg-amber-500/10 border-amber-500/20">
+          <span className="chip shrink-0 text-amber-300 bg-amber-500/10 border-amber-500/25 font-mono">
             {unlockedCount}/{achievements.length} unlocked
           </span>
         </div>
@@ -371,8 +373,10 @@ export function SettingsScreen({ profile, onProfileChange, onOpenKeys }: Setting
             return (
               <div
                 key={a.id}
-                className={`p-4 rounded-xl border ${
-                  unlocked ? 'bg-amber-500/5 border-amber-500/25' : 'bg-slate-900/40 border-white/5 opacity-50'
+                className={`p-4 ${
+                  unlocked
+                    ? 'rounded-xl border bg-amber-500/5 border-amber-500/25 shadow-[0_0_18px_rgba(245,158,11,0.08)]'
+                    : 'glass-inset opacity-50'
                 }`}
               >
                 <div className={`text-2xl ${unlocked ? '' : 'grayscale'}`}>{a.icon}</div>
@@ -390,7 +394,7 @@ export function SettingsScreen({ profile, onProfileChange, onOpenKeys }: Setting
       </section>
 
       {/* Danger zone */}
-      <section className="glass-panel p-6 border-rose-500/20">
+      <section className="glass-panel p-6 !border-rose-500/25">
         <SectionHeader
           icon="⚠️"
           title="Danger zone"

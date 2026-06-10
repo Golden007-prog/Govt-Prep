@@ -92,6 +92,28 @@ function itemSubtitle(item: PlanItem, subjectName: string | null): string | null
   }
 }
 
+/** Subject name → icon tile emoji (keyword match, generic fallback). */
+const SUBJECT_ICONS: Array<[RegExp, string]> = [
+  [/general knowledge|awareness/i, '💡'],
+  [/reasoning/i, '🧩'],
+  [/numerical|quantitative|aptitude|math/i, '📊'],
+  [/english/i, '🔤'],
+  [/programming|data structure/i, '⌨️'],
+  [/algorithm/i, '🧮'],
+  [/database|dbms/i, '🗄️'],
+  [/operating system/i, '⚙️'],
+  [/network/i, '🌐'],
+  [/organization|architecture/i, '🏗️'],
+  [/digital logic/i, '🔢'],
+  [/theory of computation|automata/i, '🧠'],
+  [/compiler/i, '🛠️'],
+  [/software/i, '📦'],
+];
+function subjectIcon(name: string): string {
+  for (const [re, icon] of SUBJECT_ICONS) if (re.test(name)) return icon;
+  return '📚';
+}
+
 /** Weekday chip parts for the 7-day rail ("Wed" / "10"). */
 function fmtDayParts(iso: string): { wd: string; num: string } {
   const d = parseISODate(iso);
@@ -218,54 +240,57 @@ export function DashboardScreen({
 
   return (
     <div className="space-y-8">
-      {/* Hero / exam + countdown + level + daily goal */}
-      <div className="glass-panel p-6 sm:p-8 bg-gradient-to-r from-cyan-950/40 via-darkCard/50 to-indigo-950/40 border-cyan-500/10">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+      {/* Command Center: exam + level chips + countdown ring + daily goal ring */}
+      <div className="glass-panel p-6 sm:p-8 !rounded-3xl bg-gradient-to-r from-cyan-950/30 via-darkCard/40 to-indigo-950/30">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-8">
           <div className="min-w-0">
-            <span className="text-xs font-semibold text-emerald-400 tracking-widest uppercase">Command center</span>
-            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white font-display mt-2">
+            <span className="eyebrow">Command Center</span>
+            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white font-display mt-2.5">
               {exam.shortName}
             </h2>
             <p className="text-slate-300 mt-2 text-sm">
               {exam.body} · {plan.language === 'hi' ? 'हिन्दी' : 'English'} ·{' '}
               <span className="capitalize">{profile.tier}</span> tier
             </p>
-            <div className="flex flex-wrap items-center gap-2 mt-3">
-              <span className="text-[11px] font-bold px-2.5 py-1 rounded-full border text-cyan-300 bg-cyan-500/10 border-cyan-500/20">
-                ⭐ Level {level.level}
-              </span>
-              <span className="text-[11px] font-bold px-2.5 py-1 rounded-full border text-indigo-300 bg-indigo-500/10 border-indigo-500/20 font-mono">
+            <div className="flex flex-wrap items-center gap-2 mt-4">
+              <span className="chip text-cyan-300 bg-cyan-500/10 border-cyan-500/25">⭐ Level {level.level}</span>
+              <span className="chip text-indigo-300 bg-indigo-500/10 border-indigo-500/25 font-mono">
                 {level.currentLevelXp}/{level.nextLevelXp} XP to next
               </span>
               {settings.streak > 0 && (
-                <span className="text-[11px] font-bold px-2.5 py-1 rounded-full border text-amber-300 bg-amber-500/10 border-amber-500/20">
+                <span className="chip text-amber-300 bg-amber-500/10 border-amber-500/25">
                   🔥 {settings.streak}-day streak
                 </span>
               )}
             </div>
-            <div className="flex flex-wrap gap-3 mt-4">
+            <div className="flex flex-wrap gap-3 mt-5">
               <button onClick={onReplan} className="btn-secondary text-sm">Change exam / re-plan</button>
               <button onClick={onOpenSetup} className="btn-secondary text-sm">Configure AI keys</button>
             </div>
           </div>
-          <div className="flex items-stretch gap-4 shrink-0">
-            <div className="text-center bg-slate-900/40 border border-white/5 rounded-2xl px-6 py-4 flex flex-col items-center justify-center">
-              <div className="text-5xl font-extrabold font-display text-cyan-400 font-mono">{Math.max(0, daysLeft)}</div>
-              <div className="text-[11px] uppercase tracking-wider text-slate-400 mt-1">days to exam</div>
-              <div className="text-[11px] text-slate-500 mt-1">{fmtDate(plan.examDate)}</div>
-            </div>
-            <div className="text-center bg-slate-900/40 border border-white/5 rounded-2xl px-6 py-4 flex flex-col items-center justify-center">
+          <div className="flex items-center gap-6 sm:gap-8 shrink-0 self-center">
+            <GoalRing
+              value={Math.max(0, plan.totalDays - Math.max(0, daysLeft))}
+              goal={Math.max(1, plan.totalDays)}
+              size={150}
+              display={{
+                main: String(Math.max(0, daysLeft)),
+                sub: 'days to exam',
+                sub2: fmtDate(plan.examDate),
+              }}
+            />
+            <div className="flex flex-col items-center">
               {data ? (
-                <GoalRing value={data.today.xp} goal={data.today.goal} size={88} />
+                <GoalRing value={data.today.xp} goal={data.today.goal} size={92} />
               ) : (
-                <Skeleton className="h-[88px] w-[88px] rounded-full" />
+                <Skeleton className="h-[92px] w-[92px] rounded-full" />
               )}
-              <div className="text-[11px] uppercase tracking-wider text-slate-400 mt-2">{"today's goal"}</div>
+              <div className="text-[10px] uppercase tracking-[0.18em] text-slate-400 mt-2.5">{"today's goal"}</div>
             </div>
           </div>
         </div>
         {exam.meta.verification !== 'verified' && (
-          <p className="mt-5 text-[11px] text-amber-300/80 bg-amber-500/5 border border-amber-500/15 rounded-lg px-3 py-2">
+          <p className="mt-6 text-[11px] text-amber-300/80 bg-amber-500/5 border border-amber-500/15 rounded-xl px-3.5 py-2.5 backdrop-blur">
             ⚠️ Exam pattern is <strong>{exam.meta.verification}</strong>. Pattern (papers/marks/negative marking/duration)
             is sourced from the official notification; Paper-II topic detail is GATE-CS-aligned. Verify before high-stakes mocks.
           </p>
@@ -284,7 +309,7 @@ export function DashboardScreen({
           onClick={() => (firstPick ? onOpenTopic(firstPick.topic.id) : onNavigate('study'))}
           className="glass-panel-interactive p-4 text-left"
         >
-          <div className="text-2xl">📘</div>
+          <span className="glass-tile w-10 h-10 text-xl">📘</span>
           <p className="text-sm font-bold text-white font-display mt-2">Continue studying</p>
           <p className="text-[11px] text-slate-400 truncate mt-0.5">
             {firstPick ? firstPick.topic.name : data ? 'Pick a topic' : 'Loading…'}
@@ -292,7 +317,7 @@ export function DashboardScreen({
         </button>
         <button onClick={() => onNavigate('review')} className="glass-panel-interactive p-4 text-left">
           <div className="flex items-start justify-between gap-2">
-            <div className="text-2xl">🃏</div>
+            <span className="glass-tile w-10 h-10 text-xl">🃏</span>
             <span
               className={`text-[10px] font-bold px-2 py-0.5 rounded-full border font-mono ${
                 data && data.dueCount > 0
@@ -307,14 +332,14 @@ export function DashboardScreen({
           <p className="text-[11px] text-slate-400 mt-0.5">Spaced repetition</p>
         </button>
         <button onClick={() => onNavigate('mock')} className="glass-panel-interactive p-4 text-left">
-          <div className="text-2xl">📝</div>
+          <span className="glass-tile w-10 h-10 text-xl">📝</span>
           <p className="text-sm font-bold text-white font-display mt-2">Mock test</p>
           <p className="text-[11px] text-slate-400 mt-0.5">
             {exam.pattern.totalQuestions} Qs · {exam.pattern.totalDurationMinutes} min
           </p>
         </button>
         <button onClick={() => onNavigate('chat')} className="glass-panel-interactive p-4 text-left">
-          <div className="text-2xl">💬</div>
+          <span className="glass-tile w-10 h-10 text-xl">💬</span>
           <p className="text-sm font-bold text-white font-display mt-2">Doubt chat</p>
           <p className="text-[11px] text-slate-400 mt-0.5">Ask anything, anytime</p>
         </button>
@@ -322,7 +347,7 @@ export function DashboardScreen({
           onClick={() => onNavigate('ca')}
           className="glass-panel-interactive p-4 text-left col-span-2 sm:col-span-1"
         >
-          <div className="text-2xl">🗞️</div>
+          <span className="glass-tile w-10 h-10 text-xl">🗞️</span>
           <p className="text-sm font-bold text-white font-display mt-2">Current affairs</p>
           <p className="text-[11px] text-slate-400 mt-0.5">Daily digest + quiz</p>
         </button>
@@ -527,13 +552,16 @@ export function DashboardScreen({
       <div className="glass-panel p-6">
         <h3 className="text-lg font-bold text-white font-display mb-4">Subjects &amp; mastery</h3>
         {data ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {data.mastery.map((s) => (
-              <div key={s.subjectId} className="p-3 rounded-xl bg-slate-900/40 border border-white/5">
-                <p className="text-xs font-semibold text-slate-200 truncate">{s.name}</p>
-                <div className="mt-2 h-1.5 rounded-full bg-slate-800 overflow-hidden">
+              <div key={s.subjectId} className="glass-inset p-3.5 transition-colors hover:border-white/10">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="glass-tile w-9 h-9 text-base shrink-0">{subjectIcon(s.name)}</span>
+                  <p className="text-xs font-semibold text-slate-200 leading-snug line-clamp-2">{s.name}</p>
+                </div>
+                <div className="mt-3 h-1.5 rounded-full bg-slate-800/80 overflow-hidden">
                   <div
-                    className="h-full bg-cyan-500 transition-all duration-500"
+                    className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-teal-400 shadow-[0_0_8px_rgba(6,182,212,0.5)] transition-all duration-500"
                     style={{ width: `${Math.min(100, Math.max(0, s.mastery))}%` }}
                   />
                 </div>

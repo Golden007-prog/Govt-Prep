@@ -23,19 +23,19 @@ export function PomodoroWidget() {
 
   if (phase === 'idle') {
     return (
-      <div className="glass-panel h-16 flex items-center gap-3 px-4">
-        <span className="text-2xl" aria-hidden>
+      <div className="glass-panel h-16 flex items-center gap-3 px-4 !rounded-2xl">
+        <span className="glass-tile w-10 h-10 text-xl shrink-0" aria-hidden>
           🍅
         </span>
         <div className="min-w-0 hidden sm:block">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Focus timer</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-300">Focus timer</p>
           <p className="text-[11px] text-slate-500">{breakMinutes}m break after</p>
         </div>
         <select
           value={workMinutes}
           onChange={(e) => setWorkMinutes(Number(e.target.value))}
           aria-label="Work block length"
-          className="bg-slate-900 border border-slate-700/50 rounded-lg px-2 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-cyan-500 transition-colors"
+          className="bg-slate-900/70 backdrop-blur border border-white/10 rounded-xl px-2.5 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-cyan-500/60 transition-colors"
         >
           {WORK_PRESETS.map((m) => (
             <option key={m} value={m}>
@@ -43,7 +43,7 @@ export function PomodoroWidget() {
             </option>
           ))}
         </select>
-        <button onClick={start} className="btn-primary text-sm !px-4 !py-1.5">
+        <button onClick={start} className="btn-primary text-sm !px-5 !py-2 !rounded-xl">
           Start
         </button>
       </div>
@@ -53,13 +53,13 @@ export function PomodoroWidget() {
   const isWork = phase === 'work';
   return (
     <div
-      className={`glass-panel h-16 flex items-center gap-3 px-4 ${
+      className={`glass-panel h-16 flex items-center gap-3 px-4 !rounded-2xl ${
         isWork
-          ? `border-cyan-500/20 ${isRunning ? 'animate-glow-pulse' : ''}`
-          : 'border-emerald-500/20'
+          ? `!border-cyan-500/25 ${isRunning ? 'animate-glow-pulse' : ''}`
+          : '!border-emerald-500/25'
       }`}
     >
-      <span className="text-2xl" aria-hidden>
+      <span className="glass-tile w-10 h-10 text-xl shrink-0" aria-hidden>
         🍅
       </span>
       <div className="min-w-0">

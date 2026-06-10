@@ -415,9 +415,7 @@ export function MockScreen({ exam, language, onFinished }: MockScreenProps) {
   const renderSetup = () => (
     <div className="max-w-4xl mx-auto space-y-6">
       <div>
-        <span className="text-xs font-semibold text-cyan-400 tracking-widest uppercase">
-          CBT mock simulator
-        </span>
+        <span className="eyebrow">CBT Mock Simulator</span>
         <h2 className="text-3xl font-extrabold tracking-tight text-white font-display mt-1">
           {exam.shortName} Mock Test
         </h2>
@@ -442,17 +440,20 @@ export function MockScreen({ exam, language, onFinished }: MockScreenProps) {
       ) : active ? (
         <div className="glass-panel p-5 sm:p-6 border-amber-500/20 bg-amber-500/5">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <p className="text-xs font-bold text-amber-400 uppercase tracking-wider">
-                ⏸ Mock in progress
-              </p>
-              <p className="text-sm text-slate-200 mt-1.5">
-                Started {fmtStartedAt(active.startedAt)} ·{' '}
-                {Object.keys(active.answers).length}/{exam.pattern.totalQuestions} answered
-              </p>
-              <p className="text-[11px] text-slate-400 mt-1 font-mono">
-                ⏱ {fmtClock(Math.max(0, active.remainingSeconds))} left on the clock
-              </p>
+            <div className="flex items-start gap-3">
+              <span className="glass-tile w-10 h-10 text-xl shrink-0">⏸</span>
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-400">
+                  Mock in Progress
+                </p>
+                <p className="text-sm text-slate-200 mt-1.5">
+                  Started {fmtStartedAt(active.startedAt)} ·{' '}
+                  {Object.keys(active.answers).length}/{exam.pattern.totalQuestions} answered
+                </p>
+                <span className="chip text-amber-300 bg-amber-500/10 border-amber-500/25 font-mono mt-2">
+                  ⏱ {fmtClock(Math.max(0, active.remainingSeconds))} left on the clock
+                </span>
+              </div>
             </div>
             <div className="flex gap-2 shrink-0">
               <button
@@ -476,9 +477,14 @@ export function MockScreen({ exam, language, onFinished }: MockScreenProps) {
 
       {/* Exam pattern — verbatim from the taxonomy */}
       <div className="glass-panel p-5 sm:p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-white font-display">Exam pattern</h3>
-          <span className="text-[11px] text-slate-500">verbatim from the official pattern</span>
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <div>
+            <span className="eyebrow">Official Pattern</span>
+            <h3 className="text-lg font-bold text-white font-display mt-1">Exam pattern</h3>
+          </div>
+          <span className="chip text-slate-400 bg-slate-500/10 border-white/10 shrink-0">
+            verbatim from the official pattern
+          </span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -512,33 +518,74 @@ export function MockScreen({ exam, language, onFinished }: MockScreenProps) {
             </tbody>
           </table>
         </div>
-        <div className="flex flex-wrap gap-2 mt-4">
-          <span className="text-[11px] font-bold px-2.5 py-1 rounded-full border text-cyan-300 bg-cyan-500/10 border-cyan-500/20">
-            {exam.pattern.totalQuestions} questions
-          </span>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-5">
+          <div className="glass-inset p-3.5 flex items-center gap-3">
+            <span className="glass-tile w-10 h-10 text-lg shrink-0">📝</span>
+            <div className="min-w-0">
+              <div className="text-xl font-bold font-mono text-cyan-300">
+                {exam.pattern.totalQuestions}
+              </div>
+              <div className="text-[10px] uppercase tracking-wider text-slate-500 mt-0.5">
+                Questions
+              </div>
+            </div>
+          </div>
           {exam.pattern.totalMarks != null && (
-            <span className="text-[11px] font-bold px-2.5 py-1 rounded-full border text-indigo-300 bg-indigo-500/10 border-indigo-500/20">
-              {exam.pattern.totalMarks} marks
-            </span>
+            <div className="glass-inset p-3.5 flex items-center gap-3">
+              <span className="glass-tile w-10 h-10 text-lg shrink-0">🎯</span>
+              <div className="min-w-0">
+                <div className="text-xl font-bold font-mono text-indigo-300">
+                  {exam.pattern.totalMarks}
+                </div>
+                <div className="text-[10px] uppercase tracking-wider text-slate-500 mt-0.5">
+                  Total marks
+                </div>
+              </div>
+            </div>
           )}
-          <span className="text-[11px] font-bold px-2.5 py-1 rounded-full border text-amber-300 bg-amber-500/10 border-amber-500/20">
-            ⏱ {exam.pattern.totalDurationMinutes} min total
-          </span>
+          <div className="glass-inset p-3.5 flex items-center gap-3">
+            <span className="glass-tile w-10 h-10 text-lg shrink-0">⏱</span>
+            <div className="min-w-0">
+              <div className="text-xl font-bold font-mono text-amber-300">
+                {exam.pattern.totalDurationMinutes}
+                <span className="text-xs font-semibold text-amber-300/70 ml-1">min</span>
+              </div>
+              <div className="text-[10px] uppercase tracking-wider text-slate-500 mt-0.5">
+                Total time
+              </div>
+            </div>
+          </div>
           {exam.pattern.negativeMarking > 0 ? (
-            <span className="text-[11px] font-bold px-2.5 py-1 rounded-full border text-rose-300 bg-rose-500/10 border-rose-500/20">
-              −{exam.pattern.negativeMarking} per wrong
-            </span>
+            <div className="glass-inset p-3.5 flex items-center gap-3">
+              <span className="glass-tile w-10 h-10 text-lg shrink-0">⚠️</span>
+              <div className="min-w-0">
+                <div className="text-xl font-bold font-mono text-rose-300">
+                  −{exam.pattern.negativeMarking}
+                </div>
+                <div className="text-[10px] uppercase tracking-wider text-slate-500 mt-0.5">
+                  Per wrong
+                </div>
+              </div>
+            </div>
           ) : (
-            <span className="text-[11px] font-bold px-2.5 py-1 rounded-full border text-emerald-300 bg-emerald-500/10 border-emerald-500/20">
-              No negative marking
-            </span>
-          )}
-          {exam.pattern.hasSectionalTiming && (
-            <span className="text-[11px] font-bold px-2.5 py-1 rounded-full border text-slate-300 bg-slate-500/10 border-slate-500/20">
-              Sectional timing
-            </span>
+            <div className="glass-inset p-3.5 flex items-center gap-3">
+              <span className="glass-tile w-10 h-10 text-lg shrink-0">✅</span>
+              <div className="min-w-0">
+                <div className="text-xl font-bold font-mono text-emerald-300">None</div>
+                <div className="text-[10px] uppercase tracking-wider text-slate-500 mt-0.5">
+                  Negative marking
+                </div>
+              </div>
+            </div>
           )}
         </div>
+        {exam.pattern.hasSectionalTiming && (
+          <div className="mt-3">
+            <span className="chip text-slate-300 bg-slate-500/10 border-slate-500/25">
+              ⏳ Sectional timing
+            </span>
+          </div>
+        )}
         {exam.pattern.sectionalCutoffs && (
           <p className="mt-3 text-[11px] text-slate-500">
             Cutoffs: {exam.pattern.sectionalCutoffs}
@@ -554,8 +601,11 @@ export function MockScreen({ exam, language, onFinished }: MockScreenProps) {
 
       {/* Start a new mock */}
       <div className="glass-panel p-5 sm:p-6">
-        <h3 className="text-lg font-bold text-white font-display">Start a new mock</h3>
-        <p className="text-sm text-slate-400 mt-1.5">
+        <div className="flex items-center gap-3">
+          <span className="glass-tile w-10 h-10 text-xl shrink-0">🚀</span>
+          <h3 className="text-lg font-bold text-white font-display">Start a new mock</h3>
+        </div>
+        <p className="text-sm text-slate-400 mt-3">
           {exam.pattern.totalQuestions} exam-style questions across every section, on the real
           clock with the real marking scheme.
         </p>
@@ -572,9 +622,9 @@ export function MockScreen({ exam, language, onFinished }: MockScreenProps) {
                 ? `Generating section questions… ${genProgress.done}/${genProgress.total}`
                 : 'Preparing paper — checking cache…'}
             </div>
-            <div className="h-2 rounded-full bg-slate-800 overflow-hidden">
+            <div className="h-2 rounded-full bg-slate-800/80 overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-cyan-500 to-indigo-500 transition-all duration-500"
+                className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-indigo-500 shadow-[0_0_8px_rgba(6,182,212,0.5)] transition-all duration-500"
                 style={{
                   width: `${
                     genProgress && genProgress.total > 0
@@ -610,12 +660,16 @@ export function MockScreen({ exam, language, onFinished }: MockScreenProps) {
     const chosen = snap.answers[q.id];
     const qState = snap.states[q.id] ?? 'not-visited';
     const clockCls =
-      clock <= 60 ? 'text-rose-400' : clock <= 300 ? 'text-amber-400' : 'text-cyan-400';
+      clock <= 60
+        ? 'text-rose-400 drop-shadow-[0_0_12px_rgba(244,63,94,0.7)]'
+        : clock <= 300
+          ? 'text-rose-300 drop-shadow-[0_0_10px_rgba(244,63,94,0.5)]'
+          : 'text-cyan-300 drop-shadow-[0_0_8px_rgba(34,211,238,0.4)]';
 
     return (
       <div className="space-y-4">
         {/* Sticky CBT bar (below the 4rem app header) */}
-        <div className="sticky top-16 z-30 glass-panel !bg-darkBg/90 px-4 py-3 flex items-center gap-3">
+        <div className="sticky top-16 z-30 glass-panel !bg-darkBg/80 px-4 py-3 flex items-center gap-3">
           <div className={`font-mono text-lg sm:text-xl font-bold tabular-nums shrink-0 ${clockCls}`}>
             ⏱ {fmtClock(clock)}
           </div>
@@ -660,14 +714,14 @@ export function MockScreen({ exam, language, onFinished }: MockScreenProps) {
           {/* Question card */}
           <div className={`glass-panel p-5 sm:p-6 ${paletteOpen ? 'lg:col-span-2' : 'lg:col-span-3'}`}>
             <div className="flex flex-wrap items-center gap-2 mb-4">
-              <span className="text-[10px] font-bold px-2 py-1 rounded-full border text-cyan-300 bg-cyan-500/10 border-cyan-500/20">
+              <span className="chip text-cyan-300 bg-cyan-500/10 border-cyan-500/25">
                 Question {snap.currentIndex + 1}
               </span>
-              <span className="text-[10px] font-bold px-2 py-1 rounded-full border text-slate-300 bg-slate-500/10 border-slate-500/20 font-mono">
+              <span className="chip text-slate-300 bg-slate-500/10 border-slate-500/25 font-mono">
                 +{section?.marksPerQuestion ?? 0}
                 {section && section.negativeMarking > 0 ? ` / −${section.negativeMarking}` : ''}
               </span>
-              <span className={`ml-auto text-[10px] font-bold px-2 py-1 rounded-full border ${PALETTE_CLS[qState]}`}>
+              <span className={`chip ml-auto ${PALETTE_CLS[qState]}`}>
                 {STATE_LABEL[qState]}
               </span>
             </div>
@@ -682,16 +736,16 @@ export function MockScreen({ exam, language, onFinished }: MockScreenProps) {
                     key={i}
                     // eslint-disable-next-line react-hooks/refs -- onClick is an event handler; the rule false-positives on closures created inside .map()
                     onClick={() => selectOption(i)}
-                    className={`w-full flex items-start gap-3 p-3.5 rounded-xl border text-left text-sm transition-colors ${
+                    className={`w-full flex items-start gap-3 p-3.5 rounded-xl border text-left text-sm transition-all ${
                       selected
-                        ? 'bg-cyan-500/10 border-cyan-500/50 text-white'
-                        : 'bg-slate-900/40 border-white/5 text-slate-300 hover:border-slate-600 hover:bg-slate-900/70'
+                        ? 'bg-cyan-500/10 border-cyan-500/50 text-white shadow-[0_0_18px_rgba(6,182,212,0.18)]'
+                        : 'glass-inset text-slate-300 hover:border-cyan-500/30 hover:bg-slate-900/70'
                     }`}
                   >
                     <span
                       className={`shrink-0 w-6 h-6 rounded-full border flex items-center justify-center text-[11px] font-mono ${
                         selected
-                          ? 'border-cyan-400 bg-cyan-500/20 text-cyan-200'
+                          ? 'border-cyan-400 bg-cyan-500/20 text-cyan-200 shadow-[0_0_10px_rgba(34,211,238,0.45)]'
                           : 'border-slate-600 text-slate-400'
                       }`}
                     >
@@ -716,7 +770,7 @@ export function MockScreen({ exam, language, onFinished }: MockScreenProps) {
               </button>
               <button
                 onClick={markAndNext}
-                className="inline-flex items-center justify-center px-6 py-3 rounded-xl border bg-indigo-500/10 border-indigo-500/30 text-indigo-300 text-sm font-medium tracking-wide hover:bg-indigo-500/20 active:scale-95 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                className="inline-flex items-center justify-center px-6 py-3 rounded-xl border bg-indigo-500/10 border-indigo-500/30 text-indigo-300 text-sm font-medium tracking-wide hover:bg-indigo-500/20 hover:border-indigo-500/40 hover:shadow-[0_0_18px_rgba(99,102,241,0.25)] active:scale-95 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
               >
                 Mark for Review &amp; Next
               </button>
@@ -764,8 +818,10 @@ export function MockScreen({ exam, language, onFinished }: MockScreenProps) {
                               // eslint-disable-next-line react-hooks/refs -- onClick is an event handler; the rule false-positives on closures created inside .map()
                               onClick={() => goTo(i)}
                               title={`Q${i + 1} — ${STATE_LABEL[st]}`}
-                              className={`relative h-9 rounded-lg border text-[11px] font-mono transition-colors ${PALETTE_CLS[st]} ${
-                                isCurrent ? 'ring-2 ring-cyan-400' : ''
+                              className={`relative h-9 rounded-xl border text-[11px] font-mono transition-all ${PALETTE_CLS[st]} ${
+                                isCurrent
+                                  ? 'ring-2 ring-cyan-400 shadow-[0_0_14px_rgba(34,211,238,0.45)]'
+                                  : ''
                               }`}
                             >
                               {i + 1}
@@ -807,15 +863,15 @@ export function MockScreen({ exam, language, onFinished }: MockScreenProps) {
               </p>
               <div className="grid grid-cols-3 gap-3 mt-5">
                 <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-center">
-                  <div className="text-2xl font-bold font-mono text-emerald-300">{counts.attempted}</div>
+                  <div className="text-2xl font-bold font-mono text-emerald-300 drop-shadow-[0_0_10px_rgba(16,185,129,0.35)]">{counts.attempted}</div>
                   <div className="text-[10px] uppercase tracking-wider text-slate-400 mt-1">Attempted</div>
                 </div>
                 <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-center">
-                  <div className="text-2xl font-bold font-mono text-indigo-300">{counts.marked}</div>
+                  <div className="text-2xl font-bold font-mono text-indigo-300 drop-shadow-[0_0_10px_rgba(99,102,241,0.35)]">{counts.marked}</div>
                   <div className="text-[10px] uppercase tracking-wider text-slate-400 mt-1">Marked</div>
                 </div>
                 <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-center">
-                  <div className="text-2xl font-bold font-mono text-rose-300">{counts.blank}</div>
+                  <div className="text-2xl font-bold font-mono text-rose-300 drop-shadow-[0_0_10px_rgba(244,63,94,0.35)]">{counts.blank}</div>
                   <div className="text-[10px] uppercase tracking-wider text-slate-400 mt-1">Blank</div>
                 </div>
               </div>
