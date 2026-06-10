@@ -1,0 +1,24 @@
+{
+  "name": "GovPrep — AI Study Companion",
+  "short_name": "GovPrep",
+  "description": "AI study companion for Indian government & PSU exam preparation.",
+  "start_url": "/Govt-Prep/",
+  "scope": "/Govt-Prep/",
+  "display": "standalone",
+  "background_color": "#0B0F19",
+  "theme_color": "#0B0F19",
+  "icons": [
+    {
+      "src": "/Govt-Prep/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/Govt-Prep/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
