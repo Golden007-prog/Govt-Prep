@@ -1,6 +1,6 @@
 import type { VideoRef } from '../brain/types';
 
-export type IngestSource = 'transcript' | 'gemini-url';
+export type IngestSource = 'transcript';
 
 export interface IngestResult {
   videoId: string;
@@ -9,9 +9,10 @@ export interface IngestResult {
 }
 
 /**
- * Video ingestion — dependency inversion. Hybrid impls (M3):
- *   TranscriptIngestor  (local: backend fetches transcript — cheap, no CORS)
- *   GeminiUrlIngestor   (hosted: Gemini-by-URL, ~300 tok/s — results MUST be cached).
+ * Video ingestion — dependency inversion. Claude-only architecture (v3):
+ *   TranscriptIngestor (local: backend fetches transcript — cheap, no CORS) → Claude summarizes.
+ *   Hosted mode does NOT ingest videos (no transcript access from the browser — CORS);
+ *   lectures are linked out to YouTube and study content is generated from the syllabus.
  * Never fetch YouTube transcripts from the browser (CORS) — AGENTS.md hard constraint.
  */
 export interface VideoIngestor {

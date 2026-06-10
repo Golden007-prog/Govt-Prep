@@ -11,7 +11,8 @@ Antigravity.
 
 Non-negotiables (full list in AGENTS.md):
 - Never hardcode API keys or tokens.
-- Never fetch YouTube transcripts from the browser (CORS) — hosted uses Gemini-by-URL, local uses the backend.
+- Never fetch YouTube transcripts from the browser (CORS) — hosted links out to YouTube; local uses the backend.
+- **Claude-only (v3):** Anthropic is the only AI provider — no Gemini/Google APIs anywhere.
 - The hosted brain must send `anthropic-dangerous-direct-browser-access: true`.
 - Keep `claude -p` calls lean and batched.
 - Commit per milestone; don't edit files Antigravity is working on.

@@ -11,6 +11,7 @@ Leave `/server` and `/src/lib/**` to Claude Code.
 Non-negotiables (full list in AGENTS.md):
 - Never hardcode API keys or tokens — read them from settings (localStorage).
 - Never fetch YouTube transcripts in the browser (CORS).
+- **Claude-only (v3):** Anthropic is the only runtime AI provider — no Gemini/Google APIs in the app.
 - The hosted brain must send `anthropic-dangerous-direct-browser-access: true`.
 - Build in milestone order; coordinate via git; don't edit files Claude Code owns.
 

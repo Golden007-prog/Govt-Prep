@@ -5,9 +5,14 @@ const fastify = Fastify({
   logger: true
 });
 
-// Enable CORS for frontend requests
+// CORS allowlist: the dev server and the deployed Pages origin (which pings
+// localhost:8787/health for mode detection). Origins are scheme://host[:port] — no path.
 await fastify.register(cors, {
-  origin: true // Allow all origins in dev mode
+  origin: [
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'https://golden007-prog.github.io',
+  ],
 });
 
 // Health check endpoint

@@ -1,8 +1,8 @@
+import { ENV } from '../config/env';
 import { MODELS } from '../config/models';
 
 export interface AppSettings {
   anthropicApiKey: string;
-  geminiApiKey: string;
   localClaudeToken: string;
   activeMode: 'local' | 'hosted';
   // Study progress metrics
@@ -12,8 +12,8 @@ export interface AppSettings {
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
-  anthropicApiKey: '',
-  geminiApiKey: '',
+  // Dev-only convenience seed from .env.local; empty in production builds (see env.ts).
+  anthropicApiKey: ENV.anthropicApiKeyDefault,
   localClaudeToken: '',
   activeMode: 'hosted',
   xp: 0,
@@ -26,7 +26,10 @@ export function getSettings(): AppSettings {
     const saved = localStorage.getItem('govprep_settings');
     if (!saved) return DEFAULT_SETTINGS;
     const parsed = JSON.parse(saved);
-    return { ...DEFAULT_SETTINGS, ...parsed };
+    const merged = { ...DEFAULT_SETTINGS, ...parsed };
+    // Migration: drop the removed Gemini key field if present from older versions.
+    delete (merged as Record<string, unknown>).geminiApiKey;
+    return merged;
   } catch (e) {
     console.error('Error loading settings from localStorage', e);
     return DEFAULT_SETTINGS;
@@ -51,16 +54,13 @@ export function clearSettings(): void {
 // Kept as MODEL_CONFIG for the BYOK connection-test in SetupScreen.
 export const MODEL_CONFIG = {
   claudeModel: MODELS.grading,
-  geminiModel: MODELS.video,
 };
 
-// Check if setup is complete based on active mode
+// Claude-only architecture: setup needs an Anthropic key in hosted mode; local mode
+// talks to the backend (subscription/CLI or backend-held key) so nothing is required.
 export function isSetupComplete(mode: 'local' | 'hosted', settings: AppSettings): boolean {
   if (mode === 'local') {
-    // Local mode just needs the google key for search (and optionally local Claude subscription configured on backend)
-    return !!settings.geminiApiKey;
-  } else {
-    // Hosted mode needs both Anthropic brain key and Gemini video key
-    return !!settings.anthropicApiKey && !!settings.geminiApiKey;
+    return true;
   }
+  return !!settings.anthropicApiKey;
 }

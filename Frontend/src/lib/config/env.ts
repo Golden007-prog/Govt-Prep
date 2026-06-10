@@ -28,8 +28,13 @@ export const ENV = {
   claudeModelRoutine: str(e.VITE_CLAUDE_MODEL_ROUTINE, 'claude-haiku-4-5-20251001'),
   /** Higher quality: free-text grading + structured generation. */
   claudeModelGrading: str(e.VITE_CLAUDE_MODEL_GRADING, 'claude-sonnet-4-6'),
-  /** Gemini for transcript/video/CA summarization (Vertex server-side, or browser BYOK). */
-  geminiModel: str(e.VITE_GEMINI_MODEL, 'gemini-2.5-flash'),
+
+  /**
+   * DEV-ONLY convenience: pre-seeds the BYOK Anthropic key from .env.local so you don't
+   * retype it every npm run dev. NEVER set this in CI/deploy builds — a VITE_ var is baked
+   * into the public bundle. Production users enter their key in Setup (localStorage).
+   */
+  anthropicApiKeyDefault: str(e.VITE_ANTHROPIC_API_KEY, ''),
 
   /** Vite base path (kept in sync with vite.config.ts `base`). */
   basePath: str(e.BASE_URL, '/'),

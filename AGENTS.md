@@ -10,14 +10,20 @@ source of truth and update it whenever the architecture changes. Re-read before 
 
 ---
 
-## Platform architecture (v2 — hybrid). Where this conflicts with sections below, this wins.
+## Platform architecture (v3 — hybrid, Claude-only). Where this conflicts with sections below, this wins.
 
-Decisions (locked 2026-06-09):
+Decisions (locked 2026-06-09; v3 revision 2026-06-10):
+- **AI provider (v3): Claude-only.** Every AI feature (notes, quizzes, grading, homework, flashcards,
+  current affairs, doubt chat) runs on the **Anthropic API**. All Gemini/Google integrations are
+  REMOVED. Hosted video ingestion is dropped: lectures **link out** to YouTube and study content is
+  generated from the syllabus taxonomy; local mode may still ingest transcripts via the backend and
+  summarize them with Claude.
 - **Scope:** hybrid — hosted multi-user **+** local-first/BYOK.
 - **Backend stack:** **Node + Fastify/TS** for the local backend; **Supabase** is the *hosted* backend
   (the spec's "FastAPI on Cloud Run" maps to Supabase — there is no Python and no Cloud Run).
-- **Hosting:** static SPA on **GitHub Pages** (`base: '/GovPrep/'`). No server runs on Pages, so the
-  hosted backend is Supabase.
+- **Hosting:** static SPA on **GitHub Pages** at https://golden007-prog.github.io/Govt-Prep/
+  (repo `Golden007-prog/Govt-Prep` → `base: '/Govt-Prep/'`). No server runs on Pages, so the
+  hosted backend is Supabase. Deploys via `.github/workflows/deploy.yml` on push to `main`.
 - **Supabase = hosted backend:** Postgres (the §6 data model + shared `content_cache`), **Auth = GitHub
   OAuth**, **Edge Functions** (server-side LLM with *operator* keys — built M2+), **pg_cron** (daily CA
   pipeline — M4). All Supabase ops are driven through the **Supabase MCP server**.
@@ -42,10 +48,11 @@ M7 tiers + BYOK free tier · M8 deploy (Pages + Supabase). Commit per milestone.
 ---
 
 ## What it does (core loop)
-1. Take the next topic from the 21-day study plan (`/src/data/plan.json`).
-2. Search YouTube for the best lecture (channel whitelist in `/src/data/channels.json`:
+1. Take the next topic from the adaptive study plan.
+2. Recommend lectures as **YouTube link-outs** (channel whitelist in `/src/data/channels.json`:
    Gate Smashers, Neso Academy, Knowledge Gate, Jenny's Lectures, Feel Free to Learn, …).
-3. Ingest the chosen video (see **Modes**).
+3. Generate study notes from the syllabus taxonomy with Claude (local mode may additionally
+   ingest the lecture transcript via the backend and ground the notes in it).
 4. Generate a short summary + 10 questions (MCQ + short answer).
 5. Grade the user's answers (free text graded by the LLM); explain mistakes.
 6. Generate 1 homework set + 5 flashcards.
@@ -60,17 +67,16 @@ Detect at startup: ping `http://localhost:8787/health`. Reachable → **local**;
 ### Hosted (github.io, no backend)
 - **Brain:** Anthropic API key (BYOK), called from the browser with header
   `anthropic-dangerous-direct-browser-access: true`. (Subscription / local CLI is impossible in a browser.)
-- **Video:** Gemini by URL — pass the YouTube link via `fileData.fileUri` to `@google/genai`.
-  One **public** video per request; ~300 tokens/sec, so **cache every summary** and never re-watch.
+- **Video:** link-out only — lectures open on YouTube; study content generates from the syllabus
+  taxonomy with Claude. No client-side video/transcript processing of any kind.
 - **Transcripts:** NOT available (YouTube transcript endpoints are CORS-blocked). Never attempt client-side transcript fetch.
-- **Keys:** user-supplied, stored in `localStorage`. Google key must be HTTP-referrer-locked; Anthropic key on a low spend cap.
+- **Keys:** one user-supplied Anthropic key, stored in `localStorage`, on a low spend cap.
 - **Storage:** IndexedDB (Dexie) + JSON export/import.
 
 ### Local / desktop (downloaded)
-- **Brain:** Claude **subscription** via the local backend running `claude -p --output-format json`
-  (or a `claude setup-token` OAuth token). API key as fallback.
-- **Video:** transcripts fetched by the backend (no CORS) — cheap/free. Gemini-by-URL optional for visual-heavy topics.
-- **Google key:** YouTube search only.
+- **Brain:** Claude — the local backend runs `claude -p --output-format json` (subscription) or
+  calls the Anthropic API with `ANTHROPIC_API_KEY` from `Backend/.env`. Same Brain interface.
+- **Video:** transcripts fetched by the backend (no CORS) — cheap/free — then summarized by Claude.
 - **Storage:** local SQLite (or Dexie).
 - **Packaging:** `npm run dev` (needs Node + Claude Code installed) or a Tauri desktop build.
 
@@ -81,7 +87,8 @@ Detect at startup: ping `http://localhost:8787/health`. Reachable → **local**;
 - **Never fetch YouTube transcripts from the browser** (CORS). Hosted = Gemini-by-URL; local = backend.
 - Hosted brain MUST send `anthropic-dangerous-direct-browser-access: true`.
 - A browser build can **never** use the Claude subscription or the local `claude` CLI.
-- **Cache video ingestion** results (Gemini is ~300 tokens/sec — expensive).
+- **No Gemini/Google APIs anywhere** (v3). The only AI provider is Anthropic.
+- **Cache every generated artifact** (notes/quiz/cards/homework/CA) — never regenerate what exists.
 - Keep LLM calls **lean and batched** (one call returns summary + quiz + homework + cards where possible).
   Note: from **2026-06-15**, programmatic `claude -p` on a subscription draws from a separate monthly
   Agent SDK credit, then API rates — so don't make chatty calls.
@@ -89,21 +96,22 @@ Detect at startup: ping `http://localhost:8787/health`. Reachable → **local**;
 
 ---
 
-## Architecture: one Brain interface, two implementations
-Define `Brain` with: `summarize(video)`, `makeQuiz(notes)`, `grade(answers)`, `makeHomework(notes)`, `makeCards(notes)`.
-- `BrowserAnthropicBrain` (hosted): `fetch` → `api.anthropic.com` with the CORS header + user key.
-- `LocalClaudeBrain` (local): `POST` → `localhost:8787/claude` → backend spawns `claude -p`.
+## Architecture: one Brain interface (Claude-only)
+`Brain` (see `Frontend/src/lib/brain/types.ts`): `makeStudyBundle(source, ctx)` (one batched call →
+notes + quiz + cards), `grade(question, answer, ctx)`, `makeHomework(notes, ctx)`.
+- `AnthropicBrain` (`lib/brain/anthropicBrain.ts`): `fetch` → `api.anthropic.com` with the
+  direct-browser-access header + the user's key. Used in BOTH modes today.
+- `LocalClaudeBrain` (optional, later): `POST` → `localhost:8787/claude` → backend spawns `claude -p`.
 
-The rest of the app depends **only** on the `Brain` interface, so switching mode swaps the impl with
-zero changes elsewhere. Do the same for video:
-`VideoIngestor` → `GeminiUrlIngestor` (hosted) vs `TranscriptIngestor` (local).
+The rest of the app depends **only** on the `Brain` interface, so swapping the impl changes nothing
+elsewhere. Video: `VideoIngestor` → `TranscriptIngestor` (local mode only); hosted links out.
 
 ---
 
 ## Tech stack
-- **Front-end:** Vite + React + TypeScript + Tailwind. Routing: **HashRouter**; set `base: '/GovPrep/'` in `vite.config.ts` for Pages.
+- **Front-end:** Vite + React + TypeScript + Tailwind. Routing: **HashRouter**; `base: '/Govt-Prep/'` in `vite.config.ts` (matches the repo name — Pages serves at /<repo>/).
 - **State/store:** Dexie (IndexedDB). **FSRS:** `ts-fsrs`.
-- **Providers:** `@google/genai` (Gemini; YouTube Data API via REST), Anthropic via `fetch`.
+- **Providers:** Anthropic only, via `fetch` (BYOK). YouTube is link-out only (no Data API key).
 - **Local backend (`/server`):** Node + Fastify. Routes: `GET /health`, `POST /claude` (spawn `claude -p`), `GET /transcript?v=` (transcript lib). No secrets in the client.
 - **Packaging:** GitHub Actions → Pages (hosted); Tauri (desktop).
 
@@ -131,7 +139,7 @@ AGENTS.md  CLAUDE.md  GEMINI.md
 - **M0** Scaffold: Vite + React + TS + Tailwind, HashRouter, base path, Dexie init.
 - **M1** Mode detection + two Setup screens (Claude setup → Google key) + settings persistence.
 - **M2** YouTube search (whitelist ranking) + video picker.
-- **M3** Video ingest: `GeminiUrlIngestor` (hosted) + `TranscriptIngestor` (local) behind `VideoIngestor`.
+- **M3** Video ingest: `TranscriptIngestor` (local mode) behind `VideoIngestor`; hosted = link-out.
 - **M4** Quiz + grading via `Brain`.
 - **M5** Homework via `Brain`.
 - **M6** Flashcards + `ts-fsrs` scheduling; wrong answer → card.
@@ -145,5 +153,5 @@ AGENTS.md  CLAUDE.md  GEMINI.md
 - **Claude Code** → `/server` and `/src/lib/**` (brain, video, store, api, mode logic). Owns dual-mode correctness.
 - **Antigravity (Gemini)** → `/src/ui/**` (screens, components, styling, browser-preview iteration).
 - Don't let both edit the same files at once. Use **git**; commit per milestone. Both obey this file.
-- Reminder: Gemini/Claude are both *build tools* (Antigravity / Claude Code) **and** *runtime models*
-  (Gemini watches videos; Claude is the study brain). Keep them straight.
+- Reminder: Gemini is only a *build tool* (Antigravity); **Claude is the only runtime model** (v3).
+  Keep them straight.

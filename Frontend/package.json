@@ -10,7 +10,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@google/genai": "^0.8.0",
     "@supabase/supabase-js": "^2.108.0",
     "dexie": "^4.0.10",
     "dexie-react-hooks": "^1.1.7",

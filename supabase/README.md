@@ -31,7 +31,6 @@ supabase db reset       # apply migrations + seed
 
 ## Security
 - **No secrets in the repo.** Anon key is publishable (RLS protects rows). Operator LLM keys live in
-  **Edge Function secrets** (`supabase secrets set ANTHROPIC_API_KEY=… GEMINI_API_KEY=…`), never in
-  the browser.
+  **Edge Function secrets** (`supabase secrets set ANTHROPIC_API_KEY=…`), never in the browser.
 - RLS: shared content tables are world-readable + service-role-write; per-user tables are restricted
   to `auth.uid()`.
