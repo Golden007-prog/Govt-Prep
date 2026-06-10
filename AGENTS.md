@@ -41,9 +41,10 @@ Data model & taxonomy: `supabase/migrations/0001_init.sql` (hosted) mirrors `Fro
 languages must match the real exam exactly (from the taxonomy).
 
 Platform milestones (supersede the personal milestone list below):
-M0 scaffold ✅ · M1 taxonomy + onboarding/plan ✅ · M2 topic study loop + `content_cache` ·
-M3 FSRS · M4 daily current affairs (scheduled) · M5 ★ CBT mock simulator · M6 reward/adaptivity ·
-M7 tiers + BYOK free tier · M8 deploy (Pages + Supabase). Commit per milestone.
+M0 scaffold ✅ · M1 taxonomy + onboarding/plan ✅ · M2 topic study loop + `content_cache` ✅ ·
+M3 FSRS ✅ · M4 daily current affairs (on-demand digest ✅; pg_cron scheduling later) ·
+M5 ★ CBT mock simulator ✅ · M6 reward/adaptivity ✅ · M7 tiers + BYOK ✅ (BYOK only; paid tier later) ·
+M8 deploy (Pages + Supabase) ✅. The 30-feature set is documented in `FEATURES.md`.
 
 ---
 
