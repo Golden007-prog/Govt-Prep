@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ExamTaxonomy, ExamTopic, TopicImportance } from '../../lib/types/exam';
-import type { StudyPlan, PlanDay, PlanItemKind } from '../../lib/types/plan';
+import type { StudyPlan, PlanDay, PlanItem, PlanItemKind } from '../../lib/types/plan';
 import type { UserProfile } from '../../lib/types/user';
 import type { AchievementDef, ActivityDay } from '../../lib/types/progress';
 import { levelForXp } from '../../lib/types/progress';
@@ -34,13 +34,72 @@ export interface DashboardScreenProps {
   onNavigate: (to: DashboardNavTarget) => void;
 }
 
-const KIND_META: Record<PlanItemKind, { label: string; cls: string; icon: string }> = {
-  study: { label: 'Study', cls: 'text-cyan-300 bg-cyan-500/10 border-cyan-500/20', icon: '📘' },
-  revision: { label: 'Revision', cls: 'text-indigo-300 bg-indigo-500/10 border-indigo-500/20', icon: '🔁' },
-  mock: { label: 'Mock', cls: 'text-rose-300 bg-rose-500/10 border-rose-500/20', icon: '📝' },
-  'current-affairs': { label: 'Current affairs', cls: 'text-emerald-300 bg-emerald-500/10 border-emerald-500/20', icon: '🗞️' },
-  rest: { label: 'Rest', cls: 'text-slate-300 bg-slate-500/10 border-slate-500/20', icon: '☕' },
+const KIND_META: Record<
+  PlanItemKind,
+  { label: string; cls: string; icon: string; tile: string; hover: string }
+> = {
+  study: {
+    label: 'Study',
+    cls: 'text-cyan-300 bg-cyan-500/10 border-cyan-500/20',
+    icon: '📘',
+    tile: 'bg-cyan-500/15 border-cyan-500/25',
+    hover: 'hover:border-cyan-500/40 hover:shadow-[0_0_18px_rgba(6,182,212,0.12)]',
+  },
+  revision: {
+    label: 'Revision',
+    cls: 'text-indigo-300 bg-indigo-500/10 border-indigo-500/20',
+    icon: '🔁',
+    tile: 'bg-indigo-500/15 border-indigo-500/25',
+    hover: 'hover:border-indigo-500/40 hover:shadow-[0_0_18px_rgba(99,102,241,0.12)]',
+  },
+  mock: {
+    label: 'Mock',
+    cls: 'text-rose-300 bg-rose-500/10 border-rose-500/20',
+    icon: '📝',
+    tile: 'bg-rose-500/15 border-rose-500/25',
+    hover: 'hover:border-rose-500/40 hover:shadow-[0_0_18px_rgba(244,63,94,0.12)]',
+  },
+  'current-affairs': {
+    label: 'Current affairs',
+    cls: 'text-emerald-300 bg-emerald-500/10 border-emerald-500/20',
+    icon: '🗞️',
+    tile: 'bg-emerald-500/15 border-emerald-500/25',
+    hover: 'hover:border-emerald-500/40 hover:shadow-[0_0_18px_rgba(16,185,129,0.12)]',
+  },
+  rest: {
+    label: 'Rest',
+    cls: 'text-slate-300 bg-slate-500/10 border-slate-500/20',
+    icon: '☕',
+    tile: 'bg-slate-500/15 border-white/10',
+    hover: '',
+  },
 };
+
+/** Second line of a plan row: the subject for topic items, an action hint otherwise. */
+function itemSubtitle(item: PlanItem, subjectName: string | null): string | null {
+  if (subjectName) return subjectName;
+  switch (item.kind) {
+    case 'current-affairs':
+      return "Open today's digest and take the quiz";
+    case 'mock':
+      return 'Launch the CBT mock simulator';
+    case 'revision':
+      return 'Review your due flashcards';
+    case 'rest':
+      return 'Recovery day — nothing required';
+    default:
+      return null;
+  }
+}
+
+/** Weekday chip parts for the 7-day rail ("Wed" / "10"). */
+function fmtDayParts(iso: string): { wd: string; num: string } {
+  const d = parseISODate(iso);
+  return {
+    wd: d.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' }),
+    num: d.toLocaleDateString('en-US', { day: 'numeric', timeZone: 'UTC' }),
+  };
+}
 
 const IMPORTANCE_CLS: Record<TopicImportance, string> = {
   high: 'text-rose-300 bg-rose-500/10 border-rose-500/20',
@@ -324,44 +383,82 @@ export function DashboardScreen({
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Today */}
-        <div className="lg:col-span-2 glass-panel p-6">
-          <div className="flex items-center justify-between mb-4">
+        <div className="lg:col-span-2 glass-panel p-6 bg-gradient-to-br from-darkCard/60 via-darkCard/40 to-cyan-950/20">
+          <div className="flex items-center justify-between mb-1">
             <h3 className="text-lg font-bold text-white font-display">
               {todayDay?.date === today ? "Today's focus" : 'Next up'}
             </h3>
-            {todayDay && <span className="text-xs text-slate-400">{fmtDate(todayDay.date)}</span>}
+            {todayDay && (
+              <span className="text-[11px] font-semibold text-slate-300 bg-slate-800/60 border border-white/5 px-2.5 py-1 rounded-full">
+                {fmtDate(todayDay.date)}
+              </span>
+            )}
           </div>
+          {todayDay && todayDay.items.length > 0 && (
+            <p className="text-[11px] text-slate-500 mb-4">
+              {todayDay.items.length} task{todayDay.items.length === 1 ? '' : 's'} · ~
+              {todayDay.items.reduce((m, it) => m + it.estimatedMinutes, 0)} min — tap any task to jump in.
+            </p>
+          )}
           {todayDay ? (
             <ul className="space-y-2.5">
               {todayDay.items.map((item, i) => {
                 const meta = KIND_META[item.kind];
                 const topicId = item.topicId;
+                const subjectName = item.subjectId ? (getSubject(exam, item.subjectId)?.name ?? null) : null;
+                const subtitle = itemSubtitle(item, subjectName);
+                const action = topicId
+                  ? () => onOpenTopic(topicId)
+                  : item.kind === 'current-affairs'
+                    ? () => onNavigate('ca')
+                    : item.kind === 'mock'
+                      ? () => onNavigate('mock')
+                      : item.kind === 'revision'
+                        ? () => onNavigate('review')
+                        : item.kind === 'study'
+                          ? () => onNavigate('study')
+                          : null;
                 const row = (
                   <>
-                    <span className="text-lg">{meta.icon}</span>
+                    <span
+                      className={`shrink-0 w-10 h-10 rounded-xl border flex items-center justify-center text-lg ${meta.tile}`}
+                    >
+                      {meta.icon}
+                    </span>
                     <div className="flex-grow min-w-0">
-                      <p className="text-sm text-slate-200 truncate">{item.title}</p>
-                      {item.subjectId && (
-                        <p className="text-[11px] text-slate-500">{getSubject(exam, item.subjectId)?.name}</p>
-                      )}
+                      <p className="text-sm font-medium text-slate-100 truncate">{item.title}</p>
+                      {subtitle && <p className="text-[11px] text-slate-500 truncate mt-0.5">{subtitle}</p>}
                     </div>
-                    <span className={`text-[10px] font-bold px-2 py-1 rounded-full border ${meta.cls}`}>
+                    <span
+                      className={`hidden sm:inline-block text-[10px] font-bold px-2 py-1 rounded-full border ${meta.cls}`}
+                    >
                       {meta.label}
                     </span>
                     <span className="text-[11px] text-slate-500 font-mono shrink-0">{item.estimatedMinutes}m</span>
+                    {action && (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-4 w-4 shrink-0 text-slate-600 transition-all duration-200 group-hover:text-cyan-300 group-hover:translate-x-0.5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                      </svg>
+                    )}
                   </>
                 );
                 return (
                   <li key={`${todayDay.date}-${i}`}>
-                    {topicId ? (
+                    {action ? (
                       <button
-                        onClick={() => onOpenTopic(topicId)}
-                        className="w-full flex items-center gap-3 p-3 rounded-xl bg-slate-900/40 border border-white/5 text-left transition-colors hover:border-cyan-500/30 hover:bg-slate-900/70"
+                        onClick={action}
+                        className={`group w-full flex items-center gap-3 p-3 rounded-xl bg-slate-900/40 border border-white/5 text-left transition-all duration-200 hover:bg-slate-900/80 active:scale-[0.99] ${meta.hover}`}
                       >
                         {row}
                       </button>
                     ) : (
-                      <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-900/40 border border-white/5">
+                      <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-900/30 border border-white/5 opacity-80">
                         {row}
                       </div>
                     )}
@@ -377,18 +474,48 @@ export function DashboardScreen({
         {/* Upcoming */}
         <div className="glass-panel p-6">
           <h3 className="text-lg font-bold text-white font-display mb-4">Next 7 days</h3>
-          <ol className="space-y-2">
+          <ol className="space-y-1.5">
             {upcoming.map((day) => {
               const focus = day.focusSubjectId ? getSubject(exam, day.focusSubjectId)?.name : null;
               const hasMock = day.items.some((i) => i.kind === 'mock');
+              const isToday = day.date === today;
+              const { wd, num } = fmtDayParts(day.date);
+              const kinds = [...new Set(day.items.map((i) => i.kind))];
               return (
-                <li key={day.date} className="flex items-center gap-3 text-sm">
-                  <span className="w-16 shrink-0 text-[11px] text-slate-500 font-mono">{fmtDate(day.date)}</span>
-                  <span className="flex-grow text-slate-300 truncate">
-                    {focus ?? (hasMock ? 'Mock + revision' : 'Revision + current affairs')}
+                <li
+                  key={day.date}
+                  className={`flex items-center gap-3 p-2 rounded-xl border transition-colors ${
+                    isToday
+                      ? 'bg-cyan-500/5 border-cyan-500/25'
+                      : 'border-transparent hover:bg-slate-900/50 hover:border-white/5'
+                  }`}
+                >
+                  <span
+                    className={`w-11 shrink-0 text-center rounded-lg border py-1 leading-tight ${
+                      isToday ? 'bg-cyan-500/15 border-cyan-500/30' : 'bg-slate-900/60 border-white/5'
+                    }`}
+                  >
+                    <span className={`block text-[9px] uppercase tracking-wider ${isToday ? 'text-cyan-300' : 'text-slate-500'}`}>
+                      {wd}
+                    </span>
+                    <span className="block text-sm font-bold text-slate-200 font-mono">{num}</span>
                   </span>
-                  {hasMock && <span className="text-[10px] text-rose-300">mock</span>}
-                  <span className="text-[11px] text-slate-500">{day.items.length}</span>
+                  <div className="flex-grow min-w-0">
+                    <p className="text-[13px] text-slate-300 truncate">
+                      {focus ?? (hasMock ? 'Mock + revision' : 'Revision + current affairs')}
+                    </p>
+                    <p className="text-[11px] text-slate-600 mt-0.5">
+                      {kinds.map((k) => KIND_META[k].icon).join(' ')}{' '}
+                      <span className="text-slate-500">
+                        {day.items.length} item{day.items.length === 1 ? '' : 's'}
+                      </span>
+                    </p>
+                  </div>
+                  {hasMock && (
+                    <span className="shrink-0 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border text-rose-300 bg-rose-500/10 border-rose-500/20">
+                      Mock
+                    </span>
+                  )}
                 </li>
               );
             })}

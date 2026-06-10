@@ -5,6 +5,7 @@ import { db, type CaDigest } from '../../lib/store/db';
 import { caQuizForDigest, getDigest, getRecentDigests, todayIso } from '../../lib/ca/caService';
 import { recordActivity, todayLocalISO } from '../../lib/progress/progressService';
 import { AnthropicError } from '../../lib/api/anthropicClient';
+import { getSettings } from '../../lib/store/settings';
 import { QuizRunner } from '../components/QuizRunner';
 
 export interface CurrentAffairsScreenProps {
@@ -39,7 +40,9 @@ async function recordCaReadOnce(): Promise<void> {
 function describeAiError(err: unknown): string {
   if (err instanceof AnthropicError) {
     if (err.status === 0 && err.message.includes('No Anthropic API key')) {
-      return `${err.message} Open Settings → Configure keys (or the Setup screen) to add your Anthropic key.`;
+      return getSettings().activeMode === 'local'
+        ? 'The local backend rejected the call — make sure `npm run dev` is running and `claude` is signed in (Setup → Test Connection).'
+        : `${err.message} Open Settings → Configure keys (or the Setup screen) to add your Anthropic key.`;
     }
     return err.message;
   }
@@ -79,11 +82,11 @@ export function CurrentAffairsScreen({ exam, language }: CurrentAffairsScreenPro
   const todayDigest = digests.find((d) => d.date === today) ?? null;
   const selected = digests.find((d) => d.date === selectedDate) ?? null;
 
-  const handleGenerate = async () => {
+  const handleGenerate = async (force = false) => {
     setGenerating(true);
     setError(null);
     try {
-      const digest = await getDigest(exam, language);
+      const digest = await getDigest(exam, language, undefined, { force });
       setDigests((prev) => [digest, ...prev.filter((d) => d.id !== digest.id)]);
       setSelectedDate(digest.date);
       setShowQuiz(false);
@@ -116,18 +119,46 @@ export function CurrentAffairsScreen({ exam, language }: CurrentAffairsScreenPro
           </span>
         </div>
 
-        {!todayDigest && !loading && (
+        {!loading && (
           <div className="mt-6">
-            <button onClick={handleGenerate} disabled={generating} className="btn-primary text-sm">
-              {generating ? (
-                <>
-                  <span className="animate-spin inline-block w-4 h-4 border-2 border-white/40 border-t-transparent rounded-full mr-2" />
-                  Building today&apos;s revision capsule… (20–60s)
-                </>
-              ) : (
-                <>✨ Generate today&apos;s digest</>
-              )}
-            </button>
+            {todayDigest ? (
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-[11px] font-semibold text-slate-300 bg-slate-900/50 border border-white/5 px-3 py-1.5 rounded-full">
+                  📋 {todayDigest.items.length} items
+                </span>
+                <span className="text-[11px] font-semibold text-slate-300 bg-slate-900/50 border border-white/5 px-3 py-1.5 rounded-full">
+                  📝 {todayDigest.quiz.length} MCQs
+                </span>
+                <button
+                  onClick={() => {
+                    setSelectedDate(today);
+                    setShowQuiz(true);
+                  }}
+                  className="btn-success !px-4 !py-2 text-xs"
+                >
+                  Take today&apos;s quiz →
+                </button>
+                <button
+                  onClick={() => void handleGenerate(true)}
+                  disabled={generating}
+                  title="Discard today's cached digest and build a fresh one"
+                  className="text-[11px] font-semibold text-slate-400 hover:text-white border border-white/5 hover:border-slate-600 bg-slate-900/40 px-3 py-1.5 rounded-full transition-colors disabled:opacity-50"
+                >
+                  {generating ? 'Regenerating…' : '↻ Regenerate'}
+                </button>
+              </div>
+            ) : (
+              <button onClick={() => void handleGenerate()} disabled={generating} className="btn-primary text-sm">
+                {generating ? (
+                  <>
+                    <span className="animate-spin inline-block w-4 h-4 border-2 border-white/40 border-t-transparent rounded-full mr-2" />
+                    Building today&apos;s revision capsule… (20–60s)
+                  </>
+                ) : (
+                  <>✨ Generate today&apos;s digest</>
+                )}
+              </button>
+            )}
             {error && (
               <div className="mt-4 p-3 rounded-xl border bg-rose-500/10 border-rose-500/20 text-rose-400 text-xs flex items-start gap-2">
                 <span>❌</span>

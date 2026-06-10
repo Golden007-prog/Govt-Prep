@@ -240,7 +240,21 @@ export async function claudeStream(
 export async function claudeJson<T>(req: ClaudeRequest): Promise<T> {
   let text: string;
   if (viaLocalTransport(req)) {
-    text = await localComplete(req);
+    // The CLI transport drifts toward prose-wrapped JSON (its own agent context
+    // dilutes our system prompt) — reinforce on the final user turn. extractJson
+    // below still rescues prose/fenced wrappers either way.
+    const last = req.messages.length - 1;
+    text = await localComplete({
+      ...req,
+      messages: req.messages.map((m, i) =>
+        i === last && m.role === 'user'
+          ? {
+              ...m,
+              content: `${m.content}\n\nIMPORTANT: Reply with ONLY the JSON document — the very first character of your reply must be { or [. No prose, no markdown fences.`,
+            }
+          : m,
+      ),
+    });
   } else {
     const raw = await claudeCompleteRaw(req);
     if (raw.stopReason === 'max_tokens') {
