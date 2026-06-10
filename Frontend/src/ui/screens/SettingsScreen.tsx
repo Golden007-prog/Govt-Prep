@@ -49,6 +49,8 @@ export function SettingsScreen({ profile, onProfileChange, onOpenKeys }: Setting
     const key = getSettings().anthropicApiKey;
     return key ? `sk-ant-…${key.slice(-4)}` : null;
   });
+  // Subscription OAuth (local backend) vs hosted BYOK — set by App before routes render.
+  const [isLocalMode] = useState(() => getSettings().activeMode === 'local');
 
   const [savingLang, setSavingLang] = useState(false);
   const [langError, setLangError] = useState<string | null>(null);
@@ -189,20 +191,40 @@ export function SettingsScreen({ profile, onProfileChange, onOpenKeys }: Setting
 
       {/* AI connection */}
       <section className="glass-panel p-6">
-        <SectionHeader icon="🔑" title="AI connection" sub="Your Anthropic key powers notes, quizzes, grading and digests." />
+        <SectionHeader
+          icon="🔑"
+          title="AI connection"
+          sub={
+            isLocalMode
+              ? 'Subscription OAuth: AI runs through the local backend with your Claude subscription.'
+              : 'Hosted fallback: your Anthropic key powers notes, quizzes, grading and digests.'
+          }
+        />
         <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-2.5">
-            <span className={keyMask ? 'glow-indicator-green' : 'glow-indicator-orange'} />
-            {keyMask ? (
-              <span className="text-sm font-mono text-slate-200">{keyMask}</span>
+            {isLocalMode ? (
+              <>
+                <span className="glow-indicator-green" />
+                <span className="text-sm text-emerald-300">
+                  Claude subscription via local backend{' '}
+                  <span className="text-slate-500">— no API key needed.</span>
+                </span>
+              </>
             ) : (
-              <span className="text-sm text-amber-300">
-                not set <span className="text-slate-500">— AI features won&apos;t work until you add one.</span>
-              </span>
+              <>
+                <span className={keyMask ? 'glow-indicator-green' : 'glow-indicator-orange'} />
+                {keyMask ? (
+                  <span className="text-sm font-mono text-slate-200">{keyMask}</span>
+                ) : (
+                  <span className="text-sm text-amber-300">
+                    not set <span className="text-slate-500">— AI features won&apos;t work until you add one.</span>
+                  </span>
+                )}
+              </>
             )}
           </div>
           <button onClick={onOpenKeys} className="btn-secondary text-sm shrink-0">
-            Configure keys
+            {isLocalMode ? 'Connection details' : 'Configure keys'}
           </button>
         </div>
       </section>

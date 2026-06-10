@@ -75,8 +75,10 @@ Detect at startup: ping `http://localhost:8787/health`. Reachable → **local**;
 - **Storage:** IndexedDB (Dexie) + JSON export/import.
 
 ### Local / desktop (downloaded)
-- **Brain:** Claude — the local backend runs `claude -p --output-format json` (subscription) or
-  calls the Anthropic API with `ANTHROPIC_API_KEY` from `Backend/.env`. Same Brain interface.
+- **Brain (Subscription OAuth):** the local backend runs `claude -p --output-format json` with the
+  user's Claude SUBSCRIPTION — interactive `claude` login or a `claude setup-token` token in
+  `Backend/.env` (`CLAUDE_CODE_OAUTH_TOKEN`). No API key: the backend strips `ANTHROPIC_API_KEY`
+  from the CLI's env so it can never silently bill the API. Same Brain interface.
 - **Video:** transcripts fetched by the backend (no CORS) — cheap/free — then summarized by Claude.
 - **Storage:** local SQLite (or Dexie).
 - **Packaging:** `npm run dev` (needs Node + Claude Code installed) or a Tauri desktop build.
@@ -100,9 +102,10 @@ Detect at startup: ping `http://localhost:8787/health`. Reachable → **local**;
 ## Architecture: one Brain interface (Claude-only)
 `Brain` (see `Frontend/src/lib/brain/types.ts`): `makeStudyBundle(source, ctx)` (one batched call →
 notes + quiz + cards), `grade(question, answer, ctx)`, `makeHomework(notes, ctx)`.
-- `AnthropicBrain` (`lib/brain/anthropicBrain.ts`): `fetch` → `api.anthropic.com` with the
-  direct-browser-access header + the user's key. Used in BOTH modes today.
-- `LocalClaudeBrain` (optional, later): `POST` → `localhost:8787/claude` → backend spawns `claude -p`.
+- `AnthropicBrain` (`lib/brain/anthropicBrain.ts`) is the single impl; the TRANSPORT underneath
+  (`lib/api/anthropicClient.ts`) routes by `settings.activeMode`:
+  · local → `POST localhost:8787/claude` → backend spawns `claude -p` (Subscription OAuth);
+  · hosted → `fetch api.anthropic.com` with the direct-browser-access header + the user's key (BYOK).
 
 The rest of the app depends **only** on the `Brain` interface, so swapping the impl changes nothing
 elsewhere. Video: `VideoIngestor` → `TranscriptIngestor` (local mode only); hosted links out.

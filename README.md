@@ -15,15 +15,18 @@ taxonomy data, not code.
 
 ## Architecture (v3 — hybrid, Claude-only)
 
-**Anthropic Claude is the only AI provider.** In the hosted app you bring your own API key
-(Setup screen; stored in `localStorage`, sent browser-direct to Anthropic). No Gemini/Google
-APIs anywhere; lectures are curated YouTube link-outs.
+**Anthropic Claude is the only AI provider — Subscription OAuth first.** Run the local backend
+(`npm run dev`) and every AI feature uses your **Claude Pro/Max subscription** through the
+`claude` CLI (sign in once, or `claude setup-token` → `Backend/.env`); even the deployed
+github.io site auto-detects the running backend and switches over. Without a backend, the
+hosted app falls back to a BYOK API key (Setup screen; stored in `localStorage`, sent
+browser-direct to Anthropic). No Gemini/Google APIs anywhere; lectures are YouTube link-outs.
 
 | Concern | Hosted (multi-user) | Local-first / desktop |
 | --- | --- | --- |
 | Frontend | Static SPA on **GitHub Pages** | same SPA (`npm run dev`) |
 | Backend | **Supabase**: Postgres + Auth (GitHub OAuth) + RLS | Node/Fastify `/Backend` |
-| AI brain | Browser BYOK → `api.anthropic.com` | same (backend `claude -p` optional later) |
+| AI brain | Browser BYOK → `api.anthropic.com` (fallback) | **Claude subscription** via `claude -p` (Subscription OAuth — no API key) |
 | Data | IndexedDB (Dexie) + cloud sync of profile/plan; shared `content_cache` | IndexedDB (Dexie), on-device |
 
 The app depends only on interfaces (`Brain`, `VideoIngestor`, `Store`), so implementations swap

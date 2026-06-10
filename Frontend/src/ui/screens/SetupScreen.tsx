@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { getSettings, saveSettings, MODEL_CONFIG } from '../../lib/store/settings';
 import { type AppMode, detectAppMode } from '../../lib/api/modeDetect';
-import { testAnthropicKey, AnthropicError } from '../../lib/api/anthropicClient';
+import { testAnthropicKey, testLocalBrain, AnthropicError } from '../../lib/api/anthropicClient';
+import { MODELS } from '../../lib/config/models';
 
 interface SetupScreenProps {
   mode: AppMode;
@@ -11,35 +12,39 @@ interface SetupScreenProps {
 type TestState = 'idle' | 'testing' | 'success' | 'error';
 
 /**
- * Claude-only setup (architecture v3): one step — the Anthropic API key (BYOK).
- * Local mode needs nothing (the backend brings its own credentials); the key is
- * still accepted there as an optional fallback. No Gemini/Google keys anywhere.
+ * Claude-only setup (architecture v3). Local mode = Subscription OAuth: the
+ * backend runs `claude -p` with your Claude subscription — nothing to enter in
+ * the browser. Hosted mode (github.io with no backend running) falls back to a
+ * BYOK Anthropic API key. No Gemini/Google keys anywhere.
  */
 export const SetupScreen: React.FC<SetupScreenProps> = ({ mode, onSetupComplete }) => {
   const [anthropicKey, setAnthropicKey] = useState(() => getSettings().anthropicApiKey || '');
-  const [claudeToken, setClaudeToken] = useState(() => getSettings().localClaudeToken || '');
 
   const [testState, setTestState] = useState<TestState>('idle');
   const [testMessage, setTestMessage] = useState('');
 
   const handleTest = async () => {
     setTestState('testing');
-    setTestMessage(mode === 'local' ? 'Pinging local backend…' : 'Verifying Anthropic key…');
+    setTestMessage(mode === 'local' ? 'Testing your Claude subscription via the local backend…' : 'Verifying Anthropic key…');
 
     if (mode === 'local') {
       try {
         const detected = await detectAppMode();
-        if (detected === 'local') {
-          setTestState('success');
-          setTestMessage('Backend server active and responsive.');
-          saveSettings({ localClaudeToken: claudeToken });
-        } else {
+        if (detected !== 'local') {
           setTestState('error');
-          setTestMessage('Could not reach backend on http://localhost:8787.');
+          setTestMessage('Could not reach the backend on http://localhost:8787 — start it with `npm run dev`.');
+          return;
         }
-      } catch {
+        await testLocalBrain(MODELS.routine);
+        setTestState('success');
+        setTestMessage('Claude subscription verified — the backend answered through `claude -p`.');
+      } catch (err) {
         setTestState('error');
-        setTestMessage('Backend server check failed.');
+        setTestMessage(
+          err instanceof AnthropicError
+            ? err.message
+            : 'Subscription check failed — run `claude` once to sign in, or set CLAUDE_CODE_OAUTH_TOKEN in Backend/.env.',
+        );
       }
       return;
     }
@@ -65,7 +70,7 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ mode, onSetupComplete 
   };
 
   const handleComplete = () => {
-    saveSettings({ anthropicApiKey: anthropicKey, localClaudeToken: claudeToken });
+    saveSettings({ anthropicApiKey: anthropicKey });
     onSetupComplete();
   };
 
@@ -97,27 +102,24 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ mode, onSetupComplete 
                 <div className="flex gap-2">
                   <span className="text-lg">💻</span>
                   <div>
-                    <p className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Local Backend Active</p>
+                    <p className="text-xs font-bold text-emerald-400 uppercase tracking-wider">
+                      Claude Subscription Active (OAuth)
+                    </p>
                     <p className="text-xs text-slate-300 mt-1">
-                      GovPrep routes requests through your local backend — no key required in the browser.
+                      Every AI feature runs through your local backend&apos;s <code className="font-mono">claude</code> CLI
+                      using your Claude Pro/Max subscription. No API key anywhere — nothing to enter here.
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  Local Access Token (Optional)
-                </label>
-                <input
-                  type="password"
-                  placeholder="Enter setup token (if custom)"
-                  value={claudeToken}
-                  onChange={(e) => setClaudeToken(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700/50 rounded-xl px-4 py-2.5 text-slate-200 focus:outline-none focus:border-cyan-500 transition-colors"
-                />
-                <p className="text-[10px] text-slate-500">
-                  Only required if your local daemon requires custom token authentication.
+              <div className="p-3.5 bg-slate-900/40 border border-white/5 rounded-xl space-y-1.5">
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Headless / token auth</p>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  Signed in to Claude Code on this machine? You&apos;re done. For a headless setup, run{' '}
+                  <code className="font-mono text-cyan-300">claude setup-token</code> and paste the result into{' '}
+                  <code className="font-mono text-cyan-300">Backend/.env</code> as{' '}
+                  <code className="font-mono text-cyan-300">CLAUDE_CODE_OAUTH_TOKEN</code>.
                 </p>
               </div>
             </div>

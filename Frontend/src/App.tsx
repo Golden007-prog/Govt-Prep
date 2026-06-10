@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { HashRouter, Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { detectAppMode, type AppMode } from './lib/api/modeDetect';
+import { saveSettings } from './lib/store/settings';
 import { getStore } from './lib/store';
 import { DexieStore } from './lib/store/dexieStore';
 import { getExam, getExamOrThrow } from './lib/taxonomy/registry';
@@ -74,6 +75,9 @@ function AppShell() {
       try {
         const [detectedMode, currentProfile] = await Promise.all([detectAppMode(), store.getProfile()]);
         if (cancelled) return;
+        // Persist the mode: the AI client routes through the subscription backend
+        // (local) vs browser BYOK (hosted) based on settings.activeMode.
+        saveSettings({ activeMode: detectedMode });
         setMode(detectedMode);
 
         let effectiveProfile = currentProfile;
@@ -183,11 +187,19 @@ function AppShell() {
     <div className="flex flex-col min-h-screen bg-darkBg text-slate-100 font-sans">
       <Header
         mode={mode}
-        onModeChange={setMode}
+        onModeChange={(m) => {
+          saveSettings({ activeMode: m });
+          setMode(m);
+        }}
         authUser={authUser}
         authAvailable={authAvailable()}
         onSignIn={() => {
-          void signInWithGitHub().catch((err) => console.error('Sign-in failed:', err));
+          void signInWithGitHub().catch((err) => {
+            console.error('Sign-in failed:', err);
+            window.alert(
+              'GitHub sign-in is not available yet.\n\nEnable the GitHub provider in the Supabase dashboard (Authentication → Providers) and add this site to the redirect URLs — see supabase/README.md. The app works fully without signing in (local-first).',
+            );
+          });
         }}
         onSignOut={() => {
           void signOut().then(() => setAuthUser(null));

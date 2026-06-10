@@ -1,12 +1,19 @@
 import { getSettings } from '../store/settings';
+import { ENV } from '../config/env';
 
 /**
- * Direct browser → api.anthropic.com client (BYOK). The user's key lives in
- * localStorage (Setup screen) and every request carries the mandatory
- * `anthropic-dangerous-direct-browser-access: true` header (AGENTS.md hard constraint).
+ * The app's single AI gateway. Two transports behind one API:
  *
- * Keep calls LEAN and BATCHED: one call should return as much of a study unit
- * (notes + quiz + homework + cards) as possible.
+ *  - LOCAL mode (Subscription OAuth): requests go to the local backend
+ *    (`POST ${ENV.localBackendUrl}/claude`), which runs `claude -p` with the
+ *    user's Claude SUBSCRIPTION (CLI login or `claude setup-token`). No API key.
+ *  - HOSTED mode (BYOK fallback): direct browser → api.anthropic.com with the
+ *    user's key from localStorage and the mandatory
+ *    `anthropic-dangerous-direct-browser-access: true` header (AGENTS.md).
+ *
+ * Mode comes from settings.activeMode, kept in sync with backend detection by
+ * App. Keep calls LEAN and BATCHED: one call should return as much of a study
+ * unit (notes + quiz + homework + cards) as possible.
  */
 
 const API_URL = 'https://api.anthropic.com/v1/messages';
@@ -69,6 +76,54 @@ function buildHeaders(apiKey: string): Record<string, string> {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Local transport: Claude subscription via the backend's `claude -p` runner.
+// ---------------------------------------------------------------------------
+
+/** True when the app is in local mode (backend detected) and no explicit key override is in play. */
+function viaLocalTransport(req: ClaudeRequest): boolean {
+  return !req.apiKey && getSettings().activeMode === 'local';
+}
+
+/** Flatten a messages array into a single prompt for `claude -p` (print mode takes one prompt). */
+function flattenForCli(messages: ClaudeMessage[]): string {
+  if (messages.length === 1 && messages[0].role === 'user') return messages[0].content;
+  const parts = messages.map((m) => (m.role === 'user' ? `User: ${m.content}` : `Assistant: ${m.content}`));
+  parts.push('Assistant:');
+  return parts.join('\n\n');
+}
+
+async function localComplete(req: ClaudeRequest): Promise<string> {
+  let response: Response;
+  try {
+    response = await fetch(`${ENV.localBackendUrl}/claude`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      signal: req.signal,
+      body: JSON.stringify({
+        prompt: flattenForCli(req.messages),
+        ...(req.system ? { system: req.system } : {}),
+        model: req.model,
+      }),
+    });
+  } catch (e) {
+    if (e instanceof DOMException && e.name === 'AbortError') throw e;
+    throw new AnthropicError(
+      0,
+      'Local backend unreachable — is `npm run dev` (or the desktop app) running? Re-detect the mode from the header badge.',
+    );
+  }
+  if (!response.ok) {
+    const err = await response.json().catch(() => null);
+    throw new AnthropicError(
+      response.status,
+      typeof err?.error === 'string' ? err.error : `Local Claude backend error (status ${response.status})`,
+    );
+  }
+  const data = await response.json().catch(() => null);
+  return typeof data?.text === 'string' ? data.text : '';
+}
+
 /** One non-streaming completion; returns the concatenated text blocks plus the stop reason. */
 async function claudeCompleteRaw(req: ClaudeRequest): Promise<{ text: string; stopReason: string | null }> {
   const apiKey = resolveKey(req.apiKey);
@@ -101,6 +156,7 @@ async function claudeCompleteRaw(req: ClaudeRequest): Promise<{ text: string; st
 
 /** One non-streaming completion; returns the concatenated text blocks. */
 export async function claudeComplete(req: ClaudeRequest): Promise<string> {
+  if (viaLocalTransport(req)) return localComplete(req);
   return (await claudeCompleteRaw(req)).text;
 }
 
@@ -113,6 +169,12 @@ export async function claudeStream(
   req: ClaudeRequest,
   onText: (delta: string) => void,
 ): Promise<{ text: string; stopReason: string | null }> {
+  // The CLI transport has no token streaming — deliver the full text in one delta.
+  if (viaLocalTransport(req)) {
+    const text = await localComplete(req);
+    if (text) onText(text);
+    return { text, stopReason: null };
+  }
   const apiKey = resolveKey(req.apiKey);
   const response = await fetch(API_URL, {
     method: 'POST',
@@ -176,12 +238,18 @@ export async function claudeStream(
  * truncated (max_tokens) or unparseable output so callers can retry/surface cleanly.
  */
 export async function claudeJson<T>(req: ClaudeRequest): Promise<T> {
-  const { text, stopReason } = await claudeCompleteRaw(req);
-  if (stopReason === 'max_tokens') {
-    throw new AnthropicError(
-      0,
-      'The AI response was cut off by the output token limit — try again or pick a narrower topic.',
-    );
+  let text: string;
+  if (viaLocalTransport(req)) {
+    text = await localComplete(req);
+  } else {
+    const raw = await claudeCompleteRaw(req);
+    if (raw.stopReason === 'max_tokens') {
+      throw new AnthropicError(
+        0,
+        'The AI response was cut off by the output token limit — try again or pick a narrower topic.',
+      );
+    }
+    text = raw.text;
   }
   // Fast path: model obeyed "STRICT JSON only" — never mangle a valid payload.
   try {
@@ -236,5 +304,17 @@ export async function testAnthropicKey(apiKey: string, model: string): Promise<v
     apiKey,
     maxTokens: 1,
     messages: [{ role: 'user', content: 'Ping' }],
+  });
+}
+
+/**
+ * End-to-end test of the local SUBSCRIPTION brain (Setup connection test):
+ * backend reachable AND `claude -p` signed in. Throws AnthropicError otherwise.
+ */
+export async function testLocalBrain(model: string): Promise<void> {
+  await localComplete({
+    model,
+    maxTokens: 8,
+    messages: [{ role: 'user', content: 'Reply with the single word: pong' }],
   });
 }
