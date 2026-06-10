@@ -3,7 +3,7 @@ import type { ExamTaxonomy, LanguageCode } from '../../lib/types/exam';
 import type { Region } from '../../lib/types/content';
 import { db, type CaDigest } from '../../lib/store/db';
 import { caQuizForDigest, getDigest, getRecentDigests, todayIso } from '../../lib/ca/caService';
-import { recordActivity } from '../../lib/progress/progressService';
+import { recordActivity, todayLocalISO } from '../../lib/progress/progressService';
 import { AnthropicError } from '../../lib/api/anthropicClient';
 import { QuizRunner } from '../components/QuizRunner';
 
@@ -26,9 +26,12 @@ function fmtDay(iso: string): string {
   });
 }
 
-/** Award the daily caRead XP at most once per calendar day (checked against the activity log). */
+/**
+ * Award the daily caRead XP at most once per calendar day (checked against the activity log).
+ * Uses todayLocalISO so the dedupe lookup matches the local-date rows recordActivity writes.
+ */
 async function recordCaReadOnce(): Promise<void> {
-  const log = await db.activityLogs.where('date').equals(todayIso()).first();
+  const log = await db.activityLogs.where('date').equals(todayLocalISO()).first();
   if (log?.actions.includes('caRead')) return;
   await recordActivity('caRead');
 }
@@ -228,9 +231,8 @@ export function CurrentAffairsScreen({ exam, language }: CurrentAffairsScreenPro
                     questions={caQuizForDigest(selected)}
                     language={language}
                     gradeShortAnswers={false}
-                    onComplete={(r) => {
-                      void recordActivity('caQuizCorrect', { count: r.correct });
-                    }}
+                    correctXpAction="caQuizCorrect"
+                    xpOnComplete={null}
                   />
                 </div>
               )}

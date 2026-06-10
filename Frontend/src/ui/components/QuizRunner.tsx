@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import type { QuizQuestion } from '../../lib/types/content';
 import type { LanguageCode } from '../../lib/types/exam';
-import type { AchievementDef } from '../../lib/types/progress';
+import type { AchievementDef, XpAction } from '../../lib/types/progress';
 import { getBrain } from '../../lib/brain/anthropicBrain';
 import { AnthropicError } from '../../lib/api/anthropicClient';
 import { wrongAnswerToCard } from '../../lib/srs/srsService';
@@ -33,6 +33,10 @@ export interface QuizRunnerProps {
   topicName?: string;
   /** Default true: 'short' questions are graded via getBrain().grade. */
   gradeShortAnswers?: boolean;
+  /** XP action recorded per correct answer at quiz end. Defaults to 'quizQuestionCorrect'. */
+  correctXpAction?: XpAction;
+  /** XP action recorded once at quiz end; null = none. Defaults to 'quizCompleted'. */
+  xpOnComplete?: XpAction | null;
   onComplete?: (result: QuizRunnerResult) => void;
 }
 
@@ -58,9 +62,13 @@ function errorMessage(err: unknown): string {
 
 /** Correct option index for an MCQ (answer is the index as a string; falls back to option-text match). */
 function mcqCorrectIndex(q: QuizQuestion): number {
-  const idx = Number.parseInt(q.answer, 10);
-  if (!Number.isNaN(idx)) return idx;
-  const byText = q.options?.findIndex((o) => o.trim() === q.answer.trim());
+  // Cached bundles may carry a non-string (or missing) answer — never crash the render.
+  const answer = typeof q.answer === 'string' ? q.answer : String(q.answer ?? '');
+  const idx = Number.parseInt(answer, 10);
+  // Trust the parsed value only when it's a valid index; otherwise fall through to the
+  // text match so numeric option text (years, '4' as 1-based) still resolves correctly.
+  if (!Number.isNaN(idx) && q.options && idx >= 0 && idx < q.options.length) return idx;
+  const byText = q.options?.findIndex((o) => o.trim() === answer.trim());
   return byText ?? -1;
 }
 
@@ -79,6 +87,8 @@ export function QuizRunner(props: QuizRunnerProps): ReactElement | null {
     subjectId,
     topicName,
     gradeShortAnswers = true,
+    correctXpAction = 'quizQuestionCorrect',
+    xpOnComplete = 'quizCompleted',
     onComplete,
   } = props;
 
@@ -183,9 +193,11 @@ export function QuizRunner(props: QuizRunnerProps): ReactElement | null {
         for (const d of defs) if (!fresh.some((f) => f.id === d.id)) fresh.push(d);
       };
       if (correct > 0) {
-        push((await recordActivity('quizQuestionCorrect', { count: correct })).newAchievements);
+        push((await recordActivity(correctXpAction, { count: correct })).newAchievements);
       }
-      push((await recordActivity('quizCompleted', { topicId })).newAchievements);
+      if (xpOnComplete) {
+        push((await recordActivity(xpOnComplete, { topicId })).newAchievements);
+      }
       if (topicId && subjectId) {
         await updateMastery(topicId, subjectId, topicName ?? topicId, res.scoreRatio);
       }

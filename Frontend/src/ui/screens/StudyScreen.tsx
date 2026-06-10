@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { ExamSubject, ExamTaxonomy, ExamTopic, LanguageCode, TopicImportance } from '../../lib/types/exam';
 import type { UserProfile } from '../../lib/types/user';
 import type { QuizQuestion } from '../../lib/types/content';
@@ -75,11 +76,16 @@ function ErrorNote({ message }: { message: string }) {
 
 export function StudyScreen({ exam, profile, initialTopicId }: StudyScreenProps) {
   const language = profile.languagePref;
+  const navigate = useNavigate();
 
-  const [topicId, setTopicId] = useState<string | null>(() => {
-    if (initialTopicId && exam.topics.some((t) => t.id === initialTopicId)) return initialTopicId;
-    return exam.topics[0]?.id ?? null;
-  });
+  // The URL is the source of truth for the selected topic: deriving from the
+  // validated route param (instead of capturing it once in state) keeps
+  // back/forward and pasted /study/<id> links in sync while the screen stays
+  // mounted; invalid or absent params fall back to the first topic.
+  const topicId =
+    initialTopicId && exam.topics.some((t) => t.id === initialTopicId)
+      ? initialTopicId
+      : (exam.topics[0]?.id ?? null);
   const topic = topicId ? getTopic(exam, topicId) : null;
   const subject = topic ? getSubject(exam, topic.subjectId) : null;
 
@@ -129,7 +135,7 @@ export function StudyScreen({ exam, profile, initialTopicId }: StudyScreenProps)
             <select
               id="study-topic-picker"
               value={topicId ?? ''}
-              onChange={(e) => setTopicId(e.target.value)}
+              onChange={(e) => navigate(`/study/${e.target.value}`, { replace: true })}
               className="w-full bg-slate-900 border border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-cyan-500 transition-colors"
             >
               {exam.subjects.map((s) => (

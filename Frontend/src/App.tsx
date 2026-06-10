@@ -39,18 +39,27 @@ function AppShell() {
   const [isLoading, setIsLoading] = useState(true);
 
   // Hosted store when signed in to a configured Supabase project; Dexie otherwise.
+  // Keyed on the stable user id (not the AuthUser object identity) so hourly
+  // TOKEN_REFRESHED / tab-refocus SIGNED_IN events don't rebuild the store and
+  // re-run init mid-session — only real sign-in/sign-out transitions do.
+  const userId = authUser?.id ?? null;
   const store = useMemo(
-    () => getStore({ hostedSession: authUser ? { userId: authUser.id } : null }),
-    [authUser],
+    () => getStore({ hostedSession: userId ? { userId } : null }),
+    [userId],
   );
 
-  // Auth session: resolve once, then subscribe.
+  // Auth session: resolve once, then subscribe. Keep the previous AuthUser
+  // object when nothing meaningful changed so auth-event re-renders are no-ops.
   useEffect(() => {
     let cancelled = false;
+    const keepIfSame = (prev: AuthUser | null, next: AuthUser | null) =>
+      prev?.id === next?.id && prev?.email === next?.email && prev?.displayName === next?.displayName
+        ? prev
+        : next;
     getCurrentUser().then((u) => {
-      if (!cancelled) setAuthUser(u);
+      if (!cancelled) setAuthUser((prev) => keepIfSame(prev, u));
     });
-    const unsubscribe = onAuthChange((u) => setAuthUser(u));
+    const unsubscribe = onAuthChange((u) => setAuthUser((prev) => keepIfSame(prev, u)));
     return () => {
       cancelled = true;
       unsubscribe();
@@ -70,16 +79,22 @@ function AppShell() {
         let effectiveProfile = currentProfile;
         let activePlan: StudyPlan | null = null;
 
-        // First sign-in on this device: migrate the local profile + plan to the cloud
-        // so the user keeps their setup (cloud sync feature).
-        if (!effectiveProfile && store.kind === 'supabase') {
+        // First sign-in on this device: the handle_new_user DB trigger pre-provisions a
+        // public.users row with target_exam_id NULL, so migrate whenever the cloud profile
+        // is missing OR unconfigured (cloud sync feature).
+        if (store.kind === 'supabase' && !effectiveProfile?.targetExamId) {
           const local = new DexieStore();
           const localProfile = await local.getProfile();
           if (cancelled) return;
           if (localProfile?.targetExamId) {
             const localPlan = await local.getPlan(localProfile.targetExamId);
             if (cancelled) return;
-            await store.saveProfile(localProfile);
+            await store.saveProfile({
+              ...localProfile,
+              id: effectiveProfile?.id ?? localProfile.id,
+              email: effectiveProfile?.email ?? localProfile.email,
+              displayName: effectiveProfile?.displayName ?? localProfile.displayName,
+            });
             if (localPlan) await store.savePlan(localPlan);
             effectiveProfile = await store.getProfile();
             activePlan = localPlan;

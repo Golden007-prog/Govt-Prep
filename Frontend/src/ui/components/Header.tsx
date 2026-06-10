@@ -3,6 +3,7 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { ModeBadge } from './ModeBadge';
 import { type AppMode } from '../../lib/api/modeDetect';
 import { getSettings } from '../../lib/store/settings';
+import { getCurrentStreak } from '../../lib/progress/progressService';
 import { countDue } from '../../lib/srs/srsService';
 import type { AuthUser } from '../../lib/auth/supabaseAuth';
 
@@ -37,19 +38,21 @@ export const Header: React.FC<HeaderProps> = ({
   const [menuOpen, setMenuOpen] = useState(false);
   const [stats, setStats] = useState(() => {
     const s = getSettings();
-    return { xp: s.xp, streak: s.streak, due: 0 };
+    return { xp: s.xp, streak: getCurrentStreak(), due: 0 };
   });
 
-  // Refresh XP/streak/due-count whenever the route changes (cheap local reads).
+  // Refresh XP/streak/due-count whenever the route changes (cheap local reads;
+  // getCurrentStreak lazily zeroes a streak broken since the last visit).
   useEffect(() => {
     let cancelled = false;
     const s = getSettings();
+    const streak = getCurrentStreak();
     countDue()
       .then((due) => {
-        if (!cancelled) setStats({ xp: s.xp, streak: s.streak, due });
+        if (!cancelled) setStats({ xp: s.xp, streak, due });
       })
       .catch(() => {
-        if (!cancelled) setStats((prev) => ({ ...prev, xp: s.xp, streak: s.streak }));
+        if (!cancelled) setStats((prev) => ({ ...prev, xp: s.xp, streak }));
       });
     return () => {
       cancelled = true;

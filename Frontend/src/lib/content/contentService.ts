@@ -3,7 +3,7 @@ import type { CachedContent } from '../store/db';
 import { sharedCacheGet, sharedCachePut } from '../store/sharedCache';
 import { getBrain } from '../brain/anthropicBrain';
 import type { BrainContext, StudyBundle } from '../brain/types';
-import { claudeJson } from '../api/anthropicClient';
+import { AnthropicError, claudeJson } from '../api/anthropicClient';
 import { MODELS } from '../config/models';
 import type { ExamTaxonomy, ExamTopic, LanguageCode } from '../types/exam';
 import type { Notes, QuizQuestion } from '../types/content';
@@ -58,10 +58,28 @@ async function putLocal(
 }
 
 /**
+ * A bundle is usable only with non-empty notes AND at least one quiz question.
+ * Off-shape model output maps to empty defaults in the brain, so without this
+ * gate a degenerate bundle would be cached forever (locally and in the shared
+ * Supabase cache, whose insert-only versioning makes the first write permanent).
+ */
+function isUsableBundle(b: unknown): b is StudyBundle {
+  const x = b as StudyBundle | null | undefined;
+  return (
+    !!x &&
+    typeof x.notes?.summaryMarkdown === 'string' &&
+    x.notes.summaryMarkdown.trim().length > 0 &&
+    Array.isArray(x.quiz?.questions) &&
+    x.quiz.questions.length > 0
+  );
+}
+
+/**
  * Get the full study bundle (notes + quiz + cards) for a topic, generating it at
  * most once per (exam family, topic, language). Order: Dexie → shared cache →
  * `Brain.makeStudyBundle` (syllabus-grounded, no transcript). Generated bundles
- * are cached in Dexie (record type 'notes') and shared best-effort.
+ * are validated (never cache a degenerate/empty bundle), cached in Dexie (record
+ * type 'notes'), and shared best-effort.
  */
 export async function getStudyBundle(
   exam: ExamTaxonomy,
@@ -70,16 +88,20 @@ export async function getStudyBundle(
 ): Promise<StudyBundle> {
   const id = bundleId(exam, topic.id, language);
   const local = await db.contentCache.get(id);
-  if (local) return local.content as StudyBundle;
+  if (local && isUsableBundle(local.content)) return local.content;
+  if (local) await db.contentCache.delete(id).catch(() => {}); // purge poisoned entry
 
   const sharedKey = { examFamily: exam.family, topicId: topic.id, type: 'notes', language };
   const shared = await sharedCacheGet<StudyBundle>(sharedKey);
-  if (shared && shared.notes && shared.quiz) {
+  if (isUsableBundle(shared)) {
     await putLocal(id, exam, topic.id, 'notes', language, shared);
     return shared;
   }
 
   const bundle = await getBrain().makeStudyBundle('', brainContext(topic, language));
+  if (!isUsableBundle(bundle)) {
+    throw new AnthropicError(0, 'Claude returned an incomplete study unit — please retry.');
+  }
   await putLocal(id, exam, topic.id, 'notes', language, bundle);
   await sharedCachePut(sharedKey, bundle);
   return bundle;
@@ -126,7 +148,9 @@ export async function getMnemonics(
 ): Promise<string[]> {
   const id = `${exam.family}|${topic.id}|mnemonics|${language}`;
   const local = await db.contentCache.get(id);
-  if (local && Array.isArray(local.content)) return local.content as string[];
+  if (local && Array.isArray(local.content) && local.content.length > 0) {
+    return local.content as string[];
+  }
 
   const sharedKey = { examFamily: exam.family, topicId: topic.id, type: 'mnemonics', language };
   const shared = await sharedCacheGet<string[]>(sharedKey);
@@ -162,8 +186,12 @@ Return JSON: { "mnemonics": ["...", "..."] }`,
   const mnemonics = (raw.mnemonics ?? [])
     .filter((m): m is string => typeof m === 'string' && m.trim().length > 0)
     .slice(0, 8);
-  await putLocal(id, exam, topic.id, 'mnemonics', language, mnemonics);
-  await sharedCachePut(sharedKey, mnemonics);
+  // Never cache an empty result (matching the shared-cache read guard above) —
+  // otherwise every retry would hit the empty cache and the model is never re-asked.
+  if (mnemonics.length > 0) {
+    await putLocal(id, exam, topic.id, 'mnemonics', language, mnemonics);
+    await sharedCachePut(sharedKey, mnemonics);
+  }
   return mnemonics;
 }
 
@@ -208,11 +236,16 @@ export async function buildRevisionMix(
   return mix;
 }
 
-/** Whether a study bundle for the topic is already in the local Dexie cache. */
+/**
+ * Whether a USABLE study bundle for the topic is already in the local Dexie cache.
+ * Poisoned/degenerate entries report false so the UI shows the Generate button
+ * again instead of silently treating the topic as ready.
+ */
 export async function hasCachedBundle(
   exam: ExamTaxonomy,
   topicId: string,
   language: LanguageCode,
 ): Promise<boolean> {
-  return (await db.contentCache.get(bundleId(exam, topicId, language))) !== undefined;
+  const rec = await db.contentCache.get(bundleId(exam, topicId, language));
+  return rec !== undefined && isUsableBundle(rec.content);
 }

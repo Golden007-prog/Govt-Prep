@@ -10,6 +10,7 @@ import { getSubject } from '../../lib/taxonomy/registry';
 import { daysUntil, parseISODate, todayISO } from '../../lib/plan/dateUtils';
 import {
   getAchievements,
+  getCurrentStreak,
   getHeatmap,
   getSubjectMastery,
   getTodayProgress,
@@ -89,8 +90,9 @@ export function DashboardScreen({
 }: DashboardScreenProps) {
   const today = todayISO();
   const daysLeft = daysUntil(plan.examDate, today);
-  // XP / streak live in localStorage settings — sync source, lazy init.
-  const [settings] = useState(() => getSettings());
+  // XP lives in localStorage settings — sync source, lazy init. Streak goes through
+  // getCurrentStreak() which lazily zeroes a broken streak on read.
+  const [settings] = useState(() => ({ ...getSettings(), streak: getCurrentStreak() }));
   const level = levelForXp(settings.xp);
 
   const [data, setData] = useState<DashboardData | null>(null);

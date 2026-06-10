@@ -1,5 +1,9 @@
 // Progress/engagement engine: XP + streak (localStorage settings), activity log + study
 // sessions + topic mastery + achievements (Dexie). Pure local computation — no AI calls.
+//
+// Day convention: all progress/activity/streak/daily-goal bookkeeping is keyed by the
+// user's LOCAL calendar date (todayLocalISO) so days roll over at local midnight, not
+// 05:30 IST. Plan/exam dates (dateUtils.todayISO) intentionally stay UTC.
 
 import { db } from '../store/db';
 import type { TopicProgress } from '../store/db';
@@ -18,6 +22,24 @@ const MASTERY_COMPLETED_AT = 80;
 /** Decay: -2 mastery per full week beyond this grace period since last study. */
 const DECAY_GRACE_DAYS = 14;
 const DECAY_PER_WEEK = 2;
+
+/**
+ * The LOCAL calendar date (YYYY-MM-DD) — the day boundary for streaks, XP, activity
+ * logs, study sessions, the daily-goal ring and the heatmap. Files needing "today"
+ * for activity/streak logic should import this (NOT dateUtils.todayISO, which is the
+ * UTC anchor reserved for plan/exam dates).
+ */
+export function todayLocalISO(): string {
+  const d = new Date();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${month}-${day}`;
+}
+
+/** Local yesterday (YYYY-MM-DD); addDaysISO's UTC-internal arithmetic is calendar-safe. */
+export function yesterdayLocalISO(): string {
+  return addDaysISO(todayLocalISO(), -1);
+}
 
 /** Optional context for {@link recordActivity}. */
 export interface RecordActivityOptions {
@@ -74,37 +96,41 @@ export async function recordActivity(
 ): Promise<{ xpEarned: number; newAchievements: AchievementDef[] }> {
   const count = opts.count ?? 1;
   const xpEarned = XP_AWARDS[action] * count;
-  const today = todayISO();
+  const today = todayLocalISO();
 
   // XP + streak live in localStorage settings.
   const settings = getSettings();
   let streak = settings.streak;
   if (settings.lastActiveDate !== today) {
-    streak = settings.lastActiveDate === addDaysISO(today, -1) ? settings.streak + 1 : 1;
+    streak = settings.lastActiveDate === yesterdayLocalISO() ? settings.streak + 1 : 1;
   }
   saveSettings({ xp: settings.xp + xpEarned, streak, lastActiveDate: today });
 
-  // Merge into today's activity-log row (one row per day).
-  const todayLog = await db.activityLogs.where('date').equals(today).first();
-  if (todayLog?.id != null) {
-    await db.activityLogs.update(todayLog.id, {
-      xpEarned: todayLog.xpEarned + xpEarned,
-      actions: [...todayLog.actions, action],
-    });
-  } else {
-    await db.activityLogs.add({ date: today, xpEarned, actions: [action] });
-  }
+  // Merge into today's activity-log row (one row per day) — atomic so overlapping
+  // recordActivity calls (e.g. pomodoro completion firing mid-quiz-finish) can't
+  // double-add a day row or clobber each other's merge.
+  await db.transaction('rw', db.activityLogs, db.studySessions, async () => {
+    const todayLog = await db.activityLogs.where('date').equals(today).first();
+    if (todayLog?.id != null) {
+      await db.activityLogs.update(todayLog.id, {
+        xpEarned: todayLog.xpEarned + xpEarned,
+        actions: [...todayLog.actions, action],
+      });
+    } else {
+      await db.activityLogs.add({ date: today, xpEarned, actions: [action] });
+    }
 
-  // Focused time → study session row (feeds the heatmap minutes + pomodoro achievement).
-  if (opts.minutes != null && opts.minutes > 0) {
-    await db.studySessions.add({
-      date: today,
-      kind: opts.sessionKind ?? 'study',
-      minutes: opts.minutes,
-      topicId: opts.topicId,
-      startedAt: Date.now(),
-    });
-  }
+    // Focused time → study session row (feeds the heatmap minutes + pomodoro achievement).
+    if (opts.minutes != null && opts.minutes > 0) {
+      await db.studySessions.add({
+        date: today,
+        kind: opts.sessionKind ?? 'study',
+        minutes: opts.minutes,
+        topicId: opts.topicId,
+        startedAt: Date.now(),
+      });
+    }
+  });
 
   const newAchievements: AchievementDef[] = [];
   // 'perfect-quiz' is a live signal (a single 10/10 quiz), not derivable from stored state.
@@ -116,6 +142,22 @@ export async function recordActivity(
     if (!newAchievements.some((a) => a.id === def.id)) newAchievements.push(def);
   }
   return { xpEarned, newAchievements };
+}
+
+/**
+ * Streak as it stands right now (read path): the stored streak while the chain is
+ * intact (last activity today or yesterday, local time). A broken chain is lazily
+ * persisted as streak = 0 — the streak is otherwise only recomputed on write inside
+ * {@link recordActivity}, so the stored value goes stale during inactive periods.
+ */
+export function getCurrentStreak(): number {
+  const settings = getSettings();
+  // ISO YYYY-MM-DD compares lexicographically === chronologically ('' sorts first).
+  if (settings.lastActiveDate < yesterdayLocalISO()) {
+    if (settings.streak !== 0) saveSettings({ streak: 0 });
+    return 0;
+  }
+  return settings.streak;
 }
 
 /**
@@ -347,7 +389,7 @@ export async function nextTopics(
  * XP + action counts from activity logs, minutes from study sessions.
  */
 export async function getHeatmap(days = 90): Promise<ActivityDay[]> {
-  const start = addDaysISO(todayISO(), -(days - 1));
+  const start = addDaysISO(todayLocalISO(), -(days - 1));
   const [logs, sessions] = await Promise.all([
     db.activityLogs.toArray(),
     db.studySessions.toArray(),
@@ -386,11 +428,12 @@ export async function setDailyGoal(n: number): Promise<void> {
   await db.settings.put({ key: DAILY_GOAL_KEY, value: n });
 }
 
-/** Today's XP earned vs the daily goal (for the dashboard ring). */
+/** Today's XP earned vs the daily goal (for the dashboard ring). Sums across rows to
+ *  stay correct even if pre-transaction races left duplicate day rows behind. */
 export async function getTodayProgress(): Promise<{ xp: number; goal: number }> {
-  const [todayLog, goal] = await Promise.all([
-    db.activityLogs.where('date').equals(todayISO()).first(),
+  const [todayLogs, goal] = await Promise.all([
+    db.activityLogs.where('date').equals(todayLocalISO()).toArray(),
     getDailyGoal(),
   ]);
-  return { xp: todayLog?.xpEarned ?? 0, goal };
+  return { xp: todayLogs.reduce((sum, l) => sum + l.xpEarned, 0), goal };
 }

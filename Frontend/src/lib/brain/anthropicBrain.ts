@@ -44,7 +44,7 @@ export class AnthropicBrain implements Brain {
     const raw = await claudeJson<RawBundle>({
       model: MODELS.routine,
       system: systemPrompt(ctx),
-      maxTokens: 8000,
+      maxTokens: 12000,
       temperature: 0.4,
       messages: [
         {
@@ -88,18 +88,20 @@ Return JSON exactly in this shape:
       quiz: {
         topicId: ctx.topicId,
         language: ctx.language,
-        questions: (raw.quiz ?? []).map(
-          (q, i): QuizQuestion => ({
-            id: `${ctx.topicId}-q${i}-${stamp}`,
-            type: q.type === 'short' ? 'short' : 'mcq',
-            stem: q.stem,
-            options: q.options,
-            answer: q.answer,
-            explanation: q.explanation,
-            sources: [],
-            origin: 'ai',
-          }),
-        ),
+        questions: (raw.quiz ?? [])
+          .filter((q) => typeof q?.stem === 'string' && q.stem.trim().length > 0)
+          .map(
+            (q, i): QuizQuestion => ({
+              id: `${ctx.topicId}-q${i}-${stamp}`,
+              type: q.type === 'short' ? 'short' : 'mcq',
+              stem: q.stem,
+              options: q.options,
+              answer: String(q.answer ?? '0'),
+              explanation: q.explanation ?? '',
+              sources: [],
+              origin: 'ai',
+            }),
+          ),
       },
       cards: (raw.cards ?? []).map((c, i) => ({
         id: `${ctx.topicId}-c${i}-${stamp}`,

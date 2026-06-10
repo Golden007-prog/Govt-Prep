@@ -1,6 +1,6 @@
 import { db, type CaDigest } from '../store/db';
 import { sharedCacheGet, sharedCachePut } from '../store/sharedCache';
-import { claudeJson } from '../api/anthropicClient';
+import { AnthropicError, claudeJson } from '../api/anthropicClient';
 import { MODELS } from '../config/models';
 import type { ExamTaxonomy, LanguageCode } from '../types/exam';
 import type { CurrentAffairsItem, QuizQuestion, Region, SourceRef } from '../types/content';
@@ -148,9 +148,16 @@ export async function getDigest(exam: ExamTaxonomy, language: LanguageCode, date
 
   const cacheKey = { examFamily: exam.family, topicId: day, type: 'ca-digest', language } as const;
 
-  // 2) Shared cross-user cache (content = { items, quiz }).
+  // 2) Shared cross-user cache (content = { items, quiz }) — ignore empty/poisoned
+  // rows so regeneration proceeds instead of persisting a blank day locally.
   const shared = await sharedCacheGet<{ items: CurrentAffairsItem[]; quiz: QuizQuestion[] }>(cacheKey);
-  if (shared && Array.isArray(shared.items) && Array.isArray(shared.quiz)) {
+  if (
+    shared &&
+    Array.isArray(shared.items) &&
+    shared.items.length > 0 &&
+    Array.isArray(shared.quiz) &&
+    shared.quiz.length > 0
+  ) {
     const digest = buildDigest(exam, language, day, shared.items, shared.quiz);
     await db.caDigests.put(digest);
     return digest;
@@ -166,6 +173,12 @@ export async function getDigest(exam: ExamTaxonomy, language: LanguageCode, date
   });
 
   const digest = buildDigest(exam, language, day, toItems(raw.items, exam, day, language), toQuiz(raw.quiz, day));
+  // An off-shape (but parseable) response yields empty items/quiz — surface it as a
+  // retryable error BEFORE either write, or the empty digest is permanent for this
+  // date locally and poisons the shared cache for every user of the exam family.
+  if (digest.items.length === 0 || digest.quiz.length === 0) {
+    throw new AnthropicError(0, 'CA generation returned an empty digest — please retry.');
+  }
   await db.caDigests.put(digest);
   await sharedCachePut(cacheKey, { items: digest.items, quiz: digest.quiz });
   return digest;

@@ -102,12 +102,12 @@ export function ChatScreen({ exam, language }: ChatScreenProps) {
     setInput('');
     setStreaming(true);
     try {
-      await claudeStream(
+      const { stopReason } = await claudeStream(
         {
           model: MODELS.grading,
           system,
           messages: payload,
-          maxTokens: 1500,
+          maxTokens: 3000,
           signal: controller.signal,
         },
         (delta) => {
@@ -118,6 +118,16 @@ export function ChatScreen({ exam, language }: ChatScreenProps) {
           });
         },
       );
+      if (stopReason === 'max_tokens') {
+        setMessages((prev) => {
+          const last = prev[prev.length - 1];
+          if (!last || last.role !== 'assistant') return prev;
+          return [
+            ...prev.slice(0, -1),
+            { ...last, content: last.content + '\n\n> *Answer was cut off by the length limit — ask me to continue.*' },
+          ];
+        });
+      }
     } catch (err) {
       // Drop the placeholder bubble if nothing streamed into it (partial answers are kept).
       setMessages((prev) => {

@@ -120,14 +120,20 @@ interface RawMockQuestion {
   explanation?: string;
 }
 
-// A raw question is usable only with a non-empty stem and at least 4 options (sliced to 4).
+// A raw question is usable only with a non-empty stem, at least 4 options (sliced to 4),
+// and an answer that is a valid index into those 4 options. Anything else is rejected so
+// the top-up loop regenerates it instead of caching a silently mis-keyed question.
 function isUsable(raw: RawMockQuestion): boolean {
-  return (
-    typeof raw.stem === 'string' &&
-    raw.stem.trim().length > 0 &&
-    Array.isArray(raw.options) &&
-    raw.options.length >= 4
-  );
+  if (
+    typeof raw.stem !== 'string' ||
+    raw.stem.trim().length === 0 ||
+    !Array.isArray(raw.options) ||
+    raw.options.length < 4
+  ) {
+    return false;
+  }
+  const parsed = Number.parseInt(String(raw.answer), 10);
+  return Number.isInteger(parsed) && parsed >= 0 && parsed <= 3;
 }
 
 function toMockQuestion(
@@ -215,7 +221,7 @@ export async function getOrBuildMockPaper(
       const raw = await claudeJson<{ questions?: RawMockQuestion[] }>({
         model: MODELS.routine,
         system: systemPrompt(language),
-        maxTokens: 6500,
+        maxTokens: 10000,
         temperature: 0.7,
         messages: [
           {

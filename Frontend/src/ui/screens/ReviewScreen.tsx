@@ -128,6 +128,22 @@ export function ReviewScreen() {
   /** Guards against double-rating while rateCard/recordActivity are in flight. */
   const busyRef = useRef(false);
 
+  // Flush any unflushed rating remainder if the user leaves mid-session (nav/back),
+  // so XP, the activity log, and the daily streak still get credited. Fire-and-forget:
+  // recordActivity is local Dexie + localStorage and completes fine after unmount.
+  useEffect(
+    () => () => {
+      const n = pendingRef.current;
+      pendingRef.current = 0;
+      if (n > 0) {
+        recordActivity('cardReviewed', { count: n, sessionKind: 'review' }).catch(() => {
+          // Best-effort: losing XP bookkeeping on teardown failure is acceptable.
+        });
+      }
+    },
+    [],
+  );
+
   useEffect(() => {
     let cancelled = false;
     Promise.all([getStats(), getDueCards(50)])

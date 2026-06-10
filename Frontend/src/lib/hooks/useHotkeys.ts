@@ -5,7 +5,9 @@ import { useEffect, useRef } from 'react';
  * whose key matches `event.key` (e.g. '1', 'Enter', 'ArrowRight', 'm').
  *
  * Events originating from inputs, textareas, selects, or contentEditable
- * elements are ignored so typing never triggers shortcuts. Matching handlers
+ * elements are ignored so typing never triggers shortcuts, and events with a
+ * Ctrl/Meta/Alt modifier are ignored so browser/OS shortcuts (copy, tab
+ * switching, history navigation) keep working. Matching handlers
  * are invoked after `preventDefault()`. The latest bindings are kept in a ref,
  * so the listener subscribes once (re-subscribing only when `enabled` flips).
  *
@@ -25,6 +27,10 @@ export function useHotkeys(
   useEffect(() => {
     if (!enabled) return;
     const onKeyDown = (e: KeyboardEvent) => {
+      // Never hijack browser/OS shortcuts (Ctrl/Cmd+C copy, Ctrl+1..9 tab switch,
+      // Alt+Arrow history navigation). Shift stays allowed: no binding uses it and
+      // e.key already reflects shifted characters.
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
       const target = e.target;
       if (target instanceof HTMLElement) {
         const tag = target.tagName;

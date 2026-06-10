@@ -111,8 +111,10 @@ export function MockScreen({ exam, language, onFinished }: MockScreenProps) {
   const paperRef = useRef<MockPaper | null>(null);
   const attemptRef = useRef<MockAttemptRecord | null>(null);
   const submittedRef = useRef(false);
+  const autoSubmitFiredRef = useRef(false);
   const saveTimerRef = useRef<number | null>(null);
   const tickCountRef = useRef(0);
+  const lastTickAtRef = useRef(0);
 
   // Look for an unfinished attempt to resume.
   useEffect(() => {
@@ -214,7 +216,9 @@ export function MockScreen({ exam, language, onFinished }: MockScreenProps) {
     paperRef.current = p;
     attemptRef.current = a;
     submittedRef.current = false;
+    autoSubmitFiredRef.current = false;
     tickCountRef.current = 0;
+    // lastTickAtRef is re-anchored by the running effect when it starts the interval.
     a.currentIndex = Math.max(0, Math.min(p.questions.length - 1, a.currentIndex));
     const q = p.questions[a.currentIndex];
     if (q && a.states[q.id] === 'not-visited') a.states[q.id] = 'unanswered';
@@ -253,23 +257,46 @@ export function MockScreen({ exam, language, onFinished }: MockScreenProps) {
     onFinished();
   }, [onFinished]);
 
-  // 1s clock: countdown, per-question time accumulation, 15s persistence,
-  // auto-submit at zero. All setState happens inside the interval callback.
+  // Wall-clock-anchored countdown: each tick consumes the real elapsed time (so
+  // hidden-tab throttling and OS sleep still burn exam time), accumulates
+  // per-question seconds, persists every ~15 ticks and auto-submits ONCE at zero
+  // (on failure the error banner + manual Submit button are the retry path).
+  // All setState happens inside the interval/visibility callbacks.
   useEffect(() => {
     if (phase !== 'running') return;
-    const id = window.setInterval(() => {
+    // Anchor the wall clock at the moment the room opens/resumes.
+    lastTickAtRef.current = Date.now();
+    const tick = () => {
       const a = attemptRef.current;
       const p = paperRef.current;
       if (!a || !p || submittedRef.current) return;
+      const now = Date.now();
+      const elapsed = Math.round((now - lastTickAtRef.current) / 1000);
+      if (elapsed <= 0) return;
+      lastTickAtRef.current = now;
       const q = p.questions[a.currentIndex];
-      if (q) a.perQuestionSeconds[q.id] = (a.perQuestionSeconds[q.id] ?? 0) + 1;
-      a.remainingSeconds = Math.max(0, a.remainingSeconds - 1);
+      if (q) {
+        // Cap per-question credit so a long hidden/asleep gap doesn't distort analytics.
+        a.perQuestionSeconds[q.id] = (a.perQuestionSeconds[q.id] ?? 0) + Math.min(elapsed, 60);
+      }
+      a.remainingSeconds = Math.max(0, a.remainingSeconds - elapsed);
       setClock(a.remainingSeconds);
       tickCountRef.current += 1;
       if (tickCountRef.current % 15 === 0) void saveAttempt(a);
-      if (a.remainingSeconds <= 0) void doSubmit();
-    }, 1000);
-    return () => window.clearInterval(id);
+      if (a.remainingSeconds <= 0 && !autoSubmitFiredRef.current) {
+        autoSubmitFiredRef.current = true;
+        void doSubmit();
+      }
+    };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') tick();
+    };
+    const id = window.setInterval(tick, 1000);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [phase, doSubmit]);
 
   // Crash-safe: persist the in-flight attempt when the screen unmounts.
@@ -305,6 +332,13 @@ export function MockScreen({ exam, language, onFinished }: MockScreenProps) {
       const p = await getOrBuildMockPaper(exam, language, (done, total) =>
         setGenProgress({ done, total }),
       );
+      // Abandon any unfinished attempt so it can't resurface as a zombie "Mock in
+      // progress" later. Done after the paper is built, so a generation failure
+      // leaves the resumable attempt intact.
+      if (active && active.id != null) {
+        await abandonAttempt(active.id);
+        setActive(null);
+      }
       const a = await startAttempt(p);
       beginRunning(p, a);
     } catch (err) {

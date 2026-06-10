@@ -69,8 +69,8 @@ function buildHeaders(apiKey: string): Record<string, string> {
   };
 }
 
-/** One non-streaming completion; returns the concatenated text blocks. */
-export async function claudeComplete(req: ClaudeRequest): Promise<string> {
+/** One non-streaming completion; returns the concatenated text blocks plus the stop reason. */
+async function claudeCompleteRaw(req: ClaudeRequest): Promise<{ text: string; stopReason: string | null }> {
   const apiKey = resolveKey(req.apiKey);
   const response = await fetch(API_URL, {
     method: 'POST',
@@ -92,17 +92,27 @@ export async function claudeComplete(req: ClaudeRequest): Promise<string> {
 
   const data = await response.json();
   const blocks: Array<{ type: string; text?: string }> = data?.content ?? [];
-  return blocks
+  const text = blocks
     .filter((b) => b.type === 'text' && typeof b.text === 'string')
     .map((b) => b.text)
     .join('');
+  return { text, stopReason: data?.stop_reason ?? null };
+}
+
+/** One non-streaming completion; returns the concatenated text blocks. */
+export async function claudeComplete(req: ClaudeRequest): Promise<string> {
+  return (await claudeCompleteRaw(req)).text;
 }
 
 /**
  * Streaming completion (SSE). Calls `onText` per text delta and resolves with the
- * full text. Used by the doubt-solver chat for responsive UX.
+ * full text plus the stop reason (so callers can flag max_tokens truncation).
+ * Used by the doubt-solver chat for responsive UX.
  */
-export async function claudeStream(req: ClaudeRequest, onText: (delta: string) => void): Promise<string> {
+export async function claudeStream(
+  req: ClaudeRequest,
+  onText: (delta: string) => void,
+): Promise<{ text: string; stopReason: string | null }> {
   const apiKey = resolveKey(req.apiKey);
   const response = await fetch(API_URL, {
     method: 'POST',
@@ -127,6 +137,7 @@ export async function claudeStream(req: ClaudeRequest, onText: (delta: string) =
   const decoder = new TextDecoder();
   let buffer = '';
   let full = '';
+  let stopReason: string | null = null;
 
   for (;;) {
     const { done, value } = await reader.read();
@@ -144,6 +155,9 @@ export async function claudeStream(req: ClaudeRequest, onText: (delta: string) =
           full += event.delta.text;
           onText(event.delta.text);
         }
+        if (event.type === 'message_delta' && event.delta?.stop_reason) {
+          stopReason = event.delta.stop_reason;
+        }
         if (event.type === 'error') {
           throw new AnthropicError(0, event.error?.message ?? 'Stream error');
         }
@@ -153,16 +167,28 @@ export async function claudeStream(req: ClaudeRequest, onText: (delta: string) =
       }
     }
   }
-  return full;
+  return { text: full, stopReason };
 }
 
 /**
  * Completion that must return a JSON document. Strips markdown fences and
  * extracts the outermost JSON value, then parses. Throws AnthropicError on
- * unparseable output so callers can retry/surface cleanly.
+ * truncated (max_tokens) or unparseable output so callers can retry/surface cleanly.
  */
 export async function claudeJson<T>(req: ClaudeRequest): Promise<T> {
-  const text = await claudeComplete(req);
+  const { text, stopReason } = await claudeCompleteRaw(req);
+  if (stopReason === 'max_tokens') {
+    throw new AnthropicError(
+      0,
+      'The AI response was cut off by the output token limit — try again or pick a narrower topic.',
+    );
+  }
+  // Fast path: model obeyed "STRICT JSON only" — never mangle a valid payload.
+  try {
+    return JSON.parse(text.trim()) as T;
+  } catch {
+    /* fall through to extraction */
+  }
   const cleaned = extractJson(text);
   try {
     return JSON.parse(cleaned) as T;
@@ -173,15 +199,34 @@ export async function claudeJson<T>(req: ClaudeRequest): Promise<T> {
 
 function extractJson(text: string): string {
   let t = text.trim();
-  // Strip ```json ... ``` fences if present.
-  const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/);
+  // Strip a fence only when it wraps the entire payload (anchored; trailing
+  // anchor forces the capture to extend past any inner ``` to the final one).
+  const fence = t.match(/^```(?:json)?\s*([\s\S]*?)\s*```\s*$/);
   if (fence) t = fence[1].trim();
-  // Trim any prose before the first { or [ and after the matching close.
-  const start = Math.min(...['{', '['].map((c) => (t.indexOf(c) === -1 ? Infinity : t.indexOf(c))));
-  if (start !== Infinity && start > 0) t = t.slice(start);
-  const lastBrace = Math.max(t.lastIndexOf('}'), t.lastIndexOf(']'));
-  if (lastBrace !== -1) t = t.slice(0, lastBrace + 1);
-  return t;
+  // Scan from the first { or [ to its balanced close, respecting strings/escapes.
+  const start = t.search(/[{[]/);
+  if (start === -1) return t;
+  const open = t[start];
+  const close = open === '{' ? '}' : ']';
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = start; i < t.length; i++) {
+    const ch = t[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === '\\') escaped = true;
+      else if (ch === '"') inString = false;
+    } else if (ch === '"') {
+      inString = true;
+    } else if (ch === open) {
+      depth++;
+    } else if (ch === close) {
+      depth--;
+      if (depth === 0) return t.slice(start, i + 1);
+    }
+  }
+  return t.slice(start); // unbalanced — let JSON.parse report the failure
 }
 
 /** Cheap key validation used by the Setup connection test. */
