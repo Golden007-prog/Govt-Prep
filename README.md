@@ -1,27 +1,34 @@
 # GovPrep
 
-An AI-native study companion for Indian government / PSU exams. Pick a target exam + date, get an
-adaptive day-by-day plan from that exam's real syllabus and pattern, study topic-by-topic from
-curated free videos with AI notes/quizzes/spaced-repetition, get a daily exam-targeted current-affairs
-feed, and practise on **CBT-style full-length mock tests** that mirror the real exam's rules.
+An AI-native study companion for Indian government / PSU exams — **live at
+https://golden007-prog.github.io/Govt-Prep/**. Pick a target exam + date, get an adaptive
+day-by-day plan from that exam's real syllabus and pattern, then study with the full toolkit
+([all 30 features](./FEATURES.md)): AI notes / quizzes / grading / homework / mnemonics,
+FSRS spaced-repetition flashcards, a streaming doubt-solver chat, a daily current-affairs
+digest + quiz, and **CBT-style full-length mock tests** that mirror the real exam's rules —
+plus XP/streaks/achievements, mastery tracking, heatmaps, pomodoro, backup, and PWA install.
 
 First target exam: **Coal India Ltd — Management Trainee (Systems / CS)**. Adding an exam = adding
 taxonomy data, not code.
 
 > **Source of truth:** [`AGENTS.md`](./AGENTS.md). Read it before each milestone.
 
-## Architecture (hybrid)
+## Architecture (v3 — hybrid, Claude-only)
+
+**Anthropic Claude is the only AI provider.** In the hosted app you bring your own API key
+(Setup screen; stored in `localStorage`, sent browser-direct to Anthropic). No Gemini/Google
+APIs anywhere; lectures are curated YouTube link-outs.
 
 | Concern | Hosted (multi-user) | Local-first / desktop |
 | --- | --- | --- |
 | Frontend | Static SPA on **GitHub Pages** | same SPA (`npm run dev`) |
-| Backend | **Supabase**: Postgres + Auth (GitHub OAuth) + Edge Functions + pg_cron | Node/Fastify `/Backend` |
-| AI brain | Edge Function (operator keys) or browser BYOK (free tier) | `claude -p` via the local backend / BYOK |
-| Data | Supabase Postgres (shared `content_cache`, RLS per user) | IndexedDB (Dexie), on-device |
+| Backend | **Supabase**: Postgres + Auth (GitHub OAuth) + RLS | Node/Fastify `/Backend` |
+| AI brain | Browser BYOK → `api.anthropic.com` | same (backend `claude -p` optional later) |
+| Data | IndexedDB (Dexie) + cloud sync of profile/plan; shared `content_cache` | IndexedDB (Dexie), on-device |
 
-The app depends only on interfaces (`Brain`, `VideoIngestor`, `CurrentAffairsIngestor`, `Store`), so
-the mode swaps the implementation with zero changes elsewhere. **The expensive AI work is cached per
-(exam-family, topic, date) and shared across users — never per user.**
+The app depends only on interfaces (`Brain`, `VideoIngestor`, `Store`), so implementations swap
+with zero changes elsewhere. **The expensive AI work is cached per (exam-family, topic, language)
+and shared across users via Supabase `content_cache` — never regenerated per user.**
 
 ## Run it (local dev)
 

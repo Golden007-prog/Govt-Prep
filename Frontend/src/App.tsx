@@ -1,28 +1,63 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { HashRouter, Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { detectAppMode, type AppMode } from './lib/api/modeDetect';
-import { getSettings, type AppSettings } from './lib/store/settings';
 import { getStore } from './lib/store';
+import { DexieStore } from './lib/store/dexieStore';
 import { getExam, getExamOrThrow } from './lib/taxonomy/registry';
 import { generatePlan } from './lib/plan/generatePlan';
 import { LOCAL_USER_ID, type UserProfile } from './lib/types/user';
 import type { StudyPlan } from './lib/types/plan';
+import {
+  authAvailable,
+  getCurrentUser,
+  onAuthChange,
+  signInWithGitHub,
+  signOut,
+  type AuthUser,
+} from './lib/auth/supabaseAuth';
 import { Header } from './ui/components/Header';
+import { PomodoroWidget } from './ui/components/PomodoroWidget';
 import { SetupScreen } from './ui/screens/SetupScreen';
 import { OnboardingScreen, type OnboardingSubmit } from './ui/screens/OnboardingScreen';
 import { DashboardScreen } from './ui/screens/DashboardScreen';
+import { StudyScreen } from './ui/screens/StudyScreen';
+import { ReviewScreen } from './ui/screens/ReviewScreen';
+import { MockScreen } from './ui/screens/MockScreen';
+import { MockResultsScreen } from './ui/screens/MockResultsScreen';
+import { ChatScreen } from './ui/screens/ChatScreen';
+import { CurrentAffairsScreen } from './ui/screens/CurrentAffairsScreen';
+import { SettingsScreen } from './ui/screens/SettingsScreen';
 
-type Screen = 'onboarding' | 'dashboard' | 'setup';
-
-function App() {
-  const store = useMemo(() => getStore({ hostedSession: null }), []);
+function AppShell() {
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const [mode, setMode] = useState<AppMode>('hosted');
-  const [screen, setScreen] = useState<Screen>('onboarding');
-  const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [plan, setPlan] = useState<StudyPlan | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Hosted store when signed in to a configured Supabase project; Dexie otherwise.
+  const store = useMemo(
+    () => getStore({ hostedSession: authUser ? { userId: authUser.id } : null }),
+    [authUser],
+  );
+
+  // Auth session: resolve once, then subscribe.
+  useEffect(() => {
+    let cancelled = false;
+    getCurrentUser().then((u) => {
+      if (!cancelled) setAuthUser(u);
+    });
+    const unsubscribe = onAuthChange((u) => setAuthUser(u));
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, []);
+
+  // Init (and re-init when the store identity changes after sign-in/out).
   useEffect(() => {
     let cancelled = false;
     async function init() {
@@ -31,19 +66,34 @@ function App() {
         const [detectedMode, currentProfile] = await Promise.all([detectAppMode(), store.getProfile()]);
         if (cancelled) return;
         setMode(detectedMode);
-        setSettings(getSettings());
-        setProfile(currentProfile);
 
-        const activePlan =
-          currentProfile?.targetExamId && getExam(currentProfile.targetExamId)
-            ? await store.getPlan(currentProfile.targetExamId)
-            : null;
+        let effectiveProfile = currentProfile;
+        let activePlan: StudyPlan | null = null;
+
+        // First sign-in on this device: migrate the local profile + plan to the cloud
+        // so the user keeps their setup (cloud sync feature).
+        if (!effectiveProfile && store.kind === 'supabase') {
+          const local = new DexieStore();
+          const localProfile = await local.getProfile();
+          if (cancelled) return;
+          if (localProfile?.targetExamId) {
+            const localPlan = await local.getPlan(localProfile.targetExamId);
+            if (cancelled) return;
+            await store.saveProfile(localProfile);
+            if (localPlan) await store.savePlan(localPlan);
+            effectiveProfile = await store.getProfile();
+            activePlan = localPlan;
+          }
+        }
+
+        if (effectiveProfile?.targetExamId && getExam(effectiveProfile.targetExamId) && !activePlan) {
+          activePlan = await store.getPlan(effectiveProfile.targetExamId);
+        }
         if (cancelled) return;
+        setProfile(effectiveProfile);
         setPlan(activePlan);
-        setScreen(currentProfile?.targetExamId && activePlan ? 'dashboard' : 'onboarding');
       } catch (err) {
         console.error('App initialization error:', err);
-        if (!cancelled) setScreen('onboarding');
       } finally {
         if (!cancelled) setIsLoading(false);
       }
@@ -54,44 +104,50 @@ function App() {
     };
   }, [store]);
 
-  async function handleOnboardingSubmit({ examId, examDate, language }: OnboardingSubmit) {
-    const exam = getExamOrThrow(examId);
-    const newPlan = generatePlan(exam, { examDate, language });
-    const now = new Date().toISOString();
-    const nextProfile: UserProfile = {
-      id: profile?.id ?? LOCAL_USER_ID,
-      email: profile?.email ?? null,
-      displayName: profile?.displayName ?? null,
-      targetExamId: examId,
-      examDate,
-      languagePref: language,
-      tier: profile?.tier ?? 'free',
-      createdAt: profile?.createdAt ?? now,
-      updatedAt: now,
-    };
-    await store.saveProfile(nextProfile);
-    await store.savePlan(newPlan);
-    setProfile(nextProfile);
-    setPlan(newPlan);
-    setScreen('dashboard');
-  }
+  const handleOnboardingSubmit = useCallback(
+    async ({ examId, examDate, language }: OnboardingSubmit) => {
+      const exam = getExamOrThrow(examId);
+      const newPlan = generatePlan(exam, { examDate, language });
+      const now = new Date().toISOString();
+      const nextProfile: UserProfile = {
+        id: profile?.id ?? authUser?.id ?? LOCAL_USER_ID,
+        email: profile?.email ?? authUser?.email ?? null,
+        displayName: profile?.displayName ?? authUser?.displayName ?? null,
+        targetExamId: examId,
+        examDate,
+        languagePref: language,
+        tier: profile?.tier ?? 'free',
+        createdAt: profile?.createdAt ?? now,
+        updatedAt: now,
+      };
+      await store.saveProfile(nextProfile);
+      await store.savePlan(newPlan);
+      setProfile(nextProfile);
+      setPlan(newPlan);
+      navigate('/');
+    },
+    [store, profile, authUser, navigate],
+  );
 
-  function handleModeChange(newMode: AppMode) {
-    setMode(newMode);
-  }
+  const handleProfileChange = useCallback(
+    async (next: UserProfile) => {
+      const stamped = { ...next, updatedAt: new Date().toISOString() };
+      await store.saveProfile(stamped);
+      setProfile(stamped);
+    },
+    [store],
+  );
 
-  function handleSetupComplete() {
-    setSettings(getSettings());
-    setScreen(profile?.targetExamId && plan ? 'dashboard' : 'onboarding');
-  }
+  const exam = profile?.targetExamId ? getExam(profile.targetExamId) : null;
+  const ready = Boolean(exam && plan && profile);
+  const language = profile?.languagePref ?? 'en';
 
-  function handleNavigate(next: Screen) {
-    if (next === 'dashboard' && (!profile?.targetExamId || !plan)) {
-      setScreen('onboarding');
-      return;
-    }
-    setScreen(next);
-  }
+  const goTo = useCallback(
+    (to: 'study' | 'review' | 'mock' | 'mock-results' | 'chat' | 'ca' | 'settings') => {
+      navigate(to === 'mock-results' ? '/mock/results' : `/${to}`);
+    },
+    [navigate],
+  );
 
   if (isLoading) {
     return (
@@ -102,46 +158,107 @@ function App() {
     );
   }
 
-  const dashboardExam = profile?.targetExamId ? getExam(profile.targetExamId) : null;
+  const requirePlan = (element: React.ReactElement) =>
+    ready ? element : <Navigate to="/onboarding" replace />;
+
+  // The focus timer floats everywhere except inside the distraction-free mock room.
+  const showPomodoro = ready && !location.pathname.startsWith('/mock');
 
   return (
     <div className="flex flex-col min-h-screen bg-darkBg text-slate-100 font-sans">
       <Header
         mode={mode}
-        onModeChange={handleModeChange}
-        xp={settings?.xp ?? 0}
-        streak={settings?.streak ?? 0}
-        onNavigate={handleNavigate}
-        currentScreen={screen}
+        onModeChange={setMode}
+        authUser={authUser}
+        authAvailable={authAvailable()}
+        onSignIn={() => {
+          void signInWithGitHub().catch((err) => console.error('Sign-in failed:', err));
+        }}
+        onSignOut={() => {
+          void signOut().then(() => setAuthUser(null));
+        }}
       />
 
       <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {screen === 'onboarding' && (
-          <OnboardingScreen existingProfile={profile} onSubmit={handleOnboardingSubmit} />
-        )}
-
-        {screen === 'dashboard' && dashboardExam && plan && profile && (
-          <DashboardScreen
-            exam={dashboardExam}
-            plan={plan}
-            profile={profile}
-            onReplan={() => setScreen('onboarding')}
-            onOpenSetup={() => setScreen('setup')}
+        <Routes>
+          <Route
+            path="/"
+            element={requirePlan(
+              exam && plan && profile ? (
+                <DashboardScreen
+                  exam={exam}
+                  plan={plan}
+                  profile={profile}
+                  onReplan={() => navigate('/onboarding')}
+                  onOpenSetup={() => navigate('/setup')}
+                  onOpenTopic={(topicId) => navigate(`/study/${topicId}`)}
+                  onNavigate={goTo}
+                />
+              ) : (
+                <Navigate to="/onboarding" replace />
+              ),
+            )}
           />
-        )}
-
-        {screen === 'dashboard' && (!dashboardExam || !plan) && (
-          <div className="text-center text-slate-400 mt-20">
-            <p>No active plan found.</p>
-            <button onClick={() => setScreen('onboarding')} className="btn-primary mt-4">
-              Create a plan
-            </button>
-          </div>
-        )}
-
-        {screen === 'setup' && <SetupScreen mode={mode} onSetupComplete={handleSetupComplete} />}
+          <Route path="/study/:topicId?" element={requirePlan(<StudyRoute exam={exam} profile={profile} />)} />
+          <Route path="/review" element={requirePlan(<ReviewScreen />)} />
+          <Route
+            path="/mock"
+            element={requirePlan(
+              exam ? <MockScreen exam={exam} language={language} onFinished={() => navigate('/mock/results')} /> : <span />,
+            )}
+          />
+          <Route
+            path="/mock/results"
+            element={requirePlan(exam ? <MockResultsScreen exam={exam} onStartMock={() => navigate('/mock')} /> : <span />)}
+          />
+          <Route path="/chat" element={requirePlan(exam ? <ChatScreen exam={exam} language={language} /> : <span />)} />
+          <Route
+            path="/ca"
+            element={requirePlan(exam ? <CurrentAffairsScreen exam={exam} language={language} /> : <span />)}
+          />
+          <Route
+            path="/settings"
+            element={
+              <SettingsScreen
+                profile={profile}
+                onProfileChange={handleProfileChange}
+                onOpenKeys={() => navigate('/setup')}
+              />
+            }
+          />
+          <Route
+            path="/setup"
+            element={<SetupScreen mode={mode} onSetupComplete={() => navigate(ready ? '/' : '/onboarding')} />}
+          />
+          <Route
+            path="/onboarding"
+            element={<OnboardingScreen existingProfile={profile} onSubmit={handleOnboardingSubmit} />}
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </main>
+
+      {showPomodoro && (
+        <div className="fixed bottom-4 right-4 z-40">
+          <PomodoroWidget />
+        </div>
+      )}
     </div>
+  );
+}
+
+/** Route adapter: pulls :topicId from the URL for the study workspace. */
+function StudyRoute({ exam, profile }: { exam: ReturnType<typeof getExam>; profile: UserProfile | null }) {
+  const { topicId } = useParams();
+  if (!exam || !profile) return <Navigate to="/onboarding" replace />;
+  return <StudyScreen exam={exam} profile={profile} initialTopicId={topicId ?? null} />;
+}
+
+function App() {
+  return (
+    <HashRouter>
+      <AppShell />
+    </HashRouter>
   );
 }
 
